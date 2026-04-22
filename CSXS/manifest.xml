@@ -33,7 +33,7 @@
                 </Lifecycle>
                 <UI>
                     <Type>Panel</Type>
-                    <Menu>Kohari ORC</Menu>
+                    <Menu>Kohari TOOLS</Menu>
                     <Geometry>
                         <Size>
                             <Height>600</Height>

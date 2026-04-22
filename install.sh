@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Kohari ORC - Photoshop Extension Installer (macOS/Linux)
+# Kohari TOOLS - Photoshop Extension Installer (macOS/Linux)
 # Compatible with Photoshop 2022 and later
 
 # Colors for output
@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 
 echo ""
 echo "============================================"
-echo "   Kohari ORC - Photoshop Extension"
+echo "   Kohari TOOLS - Photoshop Extension"
 echo "   Scanlation OCR Tool"
 echo "============================================"
 echo ""
@@ -93,7 +93,7 @@ fi
 echo ""
 echo -e "${YELLOW}IMPORTANT: Please restart Photoshop if it is running.${NC}"
 echo ""
-echo "After restart, access Kohari ORC from:"
-echo "Window > Extensions > Kohari ORC"
+echo "After restart, access Kohari TOOLS from:"
+echo "Window > Extensions > Kohari TOOLS"
 echo ""
 read -p "Press Enter to exit..."

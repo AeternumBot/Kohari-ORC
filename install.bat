@@ -1,16 +1,16 @@
 @echo off
 chcp 65001 > nul
-:: Kohari ORC - Photoshop Extension Installer
+:: Kohari TOOLS - Photoshop Extension Installer
 :: Compatible con Photoshop 2022+ (versiones oficiales y modificadas)
 :: Ejecutar como Administrador
 
-title Kohari ORC Installer
+title Kohari TOOLS Installer
 color 0A
 
 echo.
 echo ============================================
-echo    Kohari ORC - Extension Photoshop
-echo    Herramienta OCR para Scanlation
+echo    Kohari TOOLS - Extension Photoshop
+echo    Herramientas OCR y Limpieza IA
 echo ============================================
 echo.
 
@@ -128,8 +128,8 @@ reg add "HKEY_CURRENT_USER\SOFTWARE\Adobe\CSXS.8" /v PlayerDebugMode /t REG_SZ /
 echo.
 echo IMPORTANTE: Reinicia Photoshop si esta abierto.
 echo.
-echo Despues de reiniciar, accede a Kohari ORC desde:
-echo Ventana > Extensiones > Kohari ORC
+echo Despues de reiniciar, accede a Kohari TOOLS desde:
+echo Ventana > Extensiones > Kohari TOOLS
 echo.
 echo (Si no aparece, prueba: Ventana > Extensiones > Consola de extensiones)
 echo.

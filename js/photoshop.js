@@ -209,11 +209,14 @@
         getTempPath() {
             if (!this.isAvailable) return 'C:/temp';
             const try_ = (fn) => { try { return fn(); } catch (e) { return ''; } };
-            const p =
+            let p =
                 try_(() => this.csInterface.getSystemPath('userData')) ||
                 try_(() => this.csInterface.getSystemPath('commonFiles')) ||
                 'C:/temp';
-            return p.replace(/\\/g, '/');
+            // Quitar prefijo file:/// que algunos PS devuelven y decodificar URI
+            p = p.replace(/^file:\/+/i, '').replace(/^file:\\+/i, '');
+            p = decodeURIComponent(p);
+            return p.replace(/\\/g, '/').replace(/\/$/, '');
         },
 
         readFileAsBase64(filePath) {
@@ -267,6 +270,86 @@
 
                 intentarLeer(); // Arrancamos el primer intento
             });
+        },
+
+        // ── NUEVAS FUNCIONES PARA LIMPIEZA IA ────────────────────────────────
+
+        /**
+         * Exporta imagen + máscara para inpainting
+         * @returns {Promise<Object>} { imagePath, maskPath, bounds }
+         */
+        async exportSelectionWithMask(tempPath, index) {
+            try {
+                const safe = tempPath.replace(/\\/g, '/').replace(/\/$/, '');
+                const raw = await this.execScript(`exportSelectionWithMask("${safe}", ${index})`);
+                return JSON.parse(raw);
+            } catch (e) {
+                console.error('[Kohari ORC] exportSelectionWithMask:', e.message);
+                return { success: false, error: e.message };
+            }
+        },
+
+        /**
+         * Pega imagen limpia como nueva capa en Photoshop
+         * @param {string} imagePath - Ruta de la imagen limpia
+         * @returns {Promise<Object>} { success, layerName?, error? }
+         */
+        async pasteCleanedImage(imagePath) {
+            try {
+                const raw = await this.execScript(`pasteCleanedImage("${imagePath}")`);
+                return JSON.parse(raw);
+            } catch (e) {
+                console.error('[Kohari ORC] pasteCleanedImage:', e.message);
+                return { success: false, error: e.message };
+            }
+        },
+
+        /**
+         * Guarda imagen limpia (Base64) en disco y la pega como capa — todo en JSX.
+         * Evita usar cep.fs.writeFile que falla en PS modificado (Error 1/2).
+         * @param {string} base64Data - Base64 de la imagen (sin prefijo data:)
+         * @param {string} tempPath   - Carpeta temporal
+         * @param {number} index      - Índice único del archivo
+         * @returns {Promise<Object>} { success, layerName?, error? }
+         */
+        async saveAndPasteBase64Image(base64Data, tempPath, index, cropLeft, cropTop) {
+            try {
+                // Normalizar la ruta: quitar file:/// y decodificar URI
+                let safe = tempPath
+                    .replace(/^file:\/+/i, '')
+                    .replace(/^file:\\+/i, '')
+                    .replace(/\\/g, '/')
+                    .replace(/\/$/, '');
+                safe = decodeURIComponent(safe);
+
+                const b64FilePath = safe + '/kohari_b64_' + index + '.txt';
+                const b64FilePathWin = b64FilePath.replace(/\//g, '\\');
+
+                if (window.cep && window.cep.fs) {
+                    const writeTarget = navigator.appVersion.indexOf('Win') !== -1 ? b64FilePathWin : b64FilePath;
+                    const writeResult = window.cep.fs.writeFile(writeTarget, base64Data, window.cep.encoding.UTF8);
+                    if (writeResult.err !== window.cep.fs.NO_ERROR) {
+                        return { success: false, error: 'No se pudo escribir base64 temporal: Error ' + writeResult.err + ' en ' + writeTarget };
+                    }
+                } else {
+                    return { success: false, error: 'CEP FS no disponible.' };
+                }
+
+                const cl = cropLeft  || 0;
+                const ct = cropTop   || 0;
+                const raw = await this.execScript(
+                    `saveAndPasteBase64Image("${b64FilePath}", "${safe}", ${index}, ${cl}, ${ct})`
+                );
+                // Limpiar archivo temporal
+                if (window.cep && window.cep.fs) {
+                    const delTarget = navigator.appVersion.indexOf('Win') !== -1 ? b64FilePathWin : b64FilePath;
+                    try { window.cep.fs.deleteFile(delTarget); } catch (e) {}
+                }
+                return JSON.parse(raw);
+            } catch (e) {
+                console.error('[Kohari ORC] saveAndPasteBase64Image:', e.message);
+                return { success: false, error: e.message };
+            }
         }
 
     };

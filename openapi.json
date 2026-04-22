@@ -1,0 +1,894 @@
+﻿{
+    "openapi":  "3.1.0",
+    "info":  {
+                 "title":  "FastAPI",
+                 "version":  "0.1.0"
+             },
+    "paths":  {
+                  "/api/v1/gen-info":  {
+                                           "post":  {
+                                                        "summary":  "Api Geninfo",
+                                                        "operationId":  "api_geninfo_api_v1_gen_info_post",
+                                                        "requestBody":  {
+                                                                            "content":  {
+                                                                                            "multipart/form-data":  {
+                                                                                                                        "schema":  "@{$ref=#/components/schemas/Body_api_geninfo_api_v1_gen_info_post}"
+                                                                                                                    }
+                                                                                        },
+                                                                            "required":  true
+                                                                        },
+                                                        "responses":  {
+                                                                          "200":  {
+                                                                                      "description":  "Successful Response",
+                                                                                      "content":  {
+                                                                                                      "application/json":  "@{schema=}"
+                                                                                                  }
+                                                                                  },
+                                                                          "422":  {
+                                                                                      "description":  "Validation Error",
+                                                                                      "content":  {
+                                                                                                      "application/json":  "@{schema=}"
+                                                                                                  }
+                                                                                  }
+                                                                      }
+                                                    }
+                                       },
+                  "/api/v1/server-config":  {
+                                                "get":  {
+                                                            "summary":  "Api Server Config",
+                                                            "operationId":  "api_server_config_api_v1_server_config_get",
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "Successful Response",
+                                                                                          "content":  {
+                                                                                                          "application/json":  "@{schema=}"
+                                                                                                      }
+                                                                                      }
+                                                                          }
+                                                        }
+                                            },
+                  "/api/v1/models":  {
+                                         "get":  {
+                                                     "summary":  "Api Models",
+                                                     "operationId":  "api_models_api_v1_models_get",
+                                                     "responses":  {
+                                                                       "200":  {
+                                                                                   "description":  "Successful Response",
+                                                                                   "content":  {
+                                                                                                   "application/json":  "@{schema=}"
+                                                                                               }
+                                                                               }
+                                                                   }
+                                                 }
+                                     },
+                  "/api/v1/model":  {
+                                        "get":  {
+                                                    "summary":  "Api Current Model",
+                                                    "operationId":  "api_current_model_api_v1_model_get",
+                                                    "responses":  {
+                                                                      "200":  {
+                                                                                  "description":  "Successful Response",
+                                                                                  "content":  {
+                                                                                                  "application/json":  "@{schema=}"
+                                                                                              }
+                                                                              }
+                                                                  }
+                                                },
+                                        "post":  {
+                                                     "summary":  "Api Switch Model",
+                                                     "operationId":  "api_switch_model_api_v1_model_post",
+                                                     "requestBody":  {
+                                                                         "content":  {
+                                                                                         "application/json":  {
+                                                                                                                  "schema":  "@{$ref=#/components/schemas/SwitchModelRequest}"
+                                                                                                              }
+                                                                                     },
+                                                                         "required":  true
+                                                                     },
+                                                     "responses":  {
+                                                                       "200":  {
+                                                                                   "description":  "Successful Response",
+                                                                                   "content":  {
+                                                                                                   "application/json":  "@{schema=}"
+                                                                                               }
+                                                                               },
+                                                                       "422":  {
+                                                                                   "description":  "Validation Error",
+                                                                                   "content":  {
+                                                                                                   "application/json":  "@{schema=}"
+                                                                                               }
+                                                                               }
+                                                                   }
+                                                 }
+                                    },
+                  "/api/v1/inputimage":  {
+                                             "get":  {
+                                                         "summary":  "Api Input Image",
+                                                         "operationId":  "api_input_image_api_v1_inputimage_get",
+                                                         "responses":  {
+                                                                           "200":  {
+                                                                                       "description":  "Successful Response",
+                                                                                       "content":  {
+                                                                                                       "application/json":  "@{schema=}"
+                                                                                                   }
+                                                                                   }
+                                                                       }
+                                                     }
+                                         },
+                  "/api/v1/inpaint":  {
+                                          "post":  {
+                                                       "summary":  "Api Inpaint",
+                                                       "operationId":  "api_inpaint_api_v1_inpaint_post",
+                                                       "requestBody":  {
+                                                                           "content":  {
+                                                                                           "application/json":  {
+                                                                                                                    "schema":  "@{$ref=#/components/schemas/InpaintRequest}"
+                                                                                                                }
+                                                                                       },
+                                                                           "required":  true
+                                                                       },
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Successful Response",
+                                                                                     "content":  {
+                                                                                                     "application/json":  "@{schema=}"
+                                                                                                 }
+                                                                                 },
+                                                                         "422":  {
+                                                                                     "description":  "Validation Error",
+                                                                                     "content":  {
+                                                                                                     "application/json":  "@{schema=}"
+                                                                                                 }
+                                                                                 }
+                                                                     }
+                                                   }
+                                      },
+                  "/api/v1/run_plugin_gen_mask":  {
+                                                      "post":  {
+                                                                   "summary":  "Api Run Plugin Gen Mask",
+                                                                   "operationId":  "api_run_plugin_gen_mask_api_v1_run_plugin_gen_mask_post",
+                                                                   "requestBody":  {
+                                                                                       "content":  {
+                                                                                                       "application/json":  {
+                                                                                                                                "schema":  "@{$ref=#/components/schemas/RunPluginRequest}"
+                                                                                                                            }
+                                                                                                   },
+                                                                                       "required":  true
+                                                                                   },
+                                                                   "responses":  {
+                                                                                     "200":  {
+                                                                                                 "description":  "Successful Response",
+                                                                                                 "content":  {
+                                                                                                                 "application/json":  "@{schema=}"
+                                                                                                             }
+                                                                                             },
+                                                                                     "422":  {
+                                                                                                 "description":  "Validation Error",
+                                                                                                 "content":  {
+                                                                                                                 "application/json":  "@{schema=}"
+                                                                                                             }
+                                                                                             }
+                                                                                 }
+                                                               }
+                                                  },
+                  "/api/v1/run_plugin_gen_image":  {
+                                                       "post":  {
+                                                                    "summary":  "Api Run Plugin Gen Image",
+                                                                    "operationId":  "api_run_plugin_gen_image_api_v1_run_plugin_gen_image_post",
+                                                                    "requestBody":  {
+                                                                                        "content":  {
+                                                                                                        "application/json":  {
+                                                                                                                                 "schema":  "@{$ref=#/components/schemas/RunPluginRequest}"
+                                                                                                                             }
+                                                                                                    },
+                                                                                        "required":  true
+                                                                                    },
+                                                                    "responses":  {
+                                                                                      "200":  {
+                                                                                                  "description":  "Successful Response",
+                                                                                                  "content":  {
+                                                                                                                  "application/json":  "@{schema=}"
+                                                                                                              }
+                                                                                              },
+                                                                                      "422":  {
+                                                                                                  "description":  "Validation Error",
+                                                                                                  "content":  {
+                                                                                                                  "application/json":  "@{schema=}"
+                                                                                                              }
+                                                                                              }
+                                                                                  }
+                                                                }
+                                                   },
+                  "/api/v1/samplers":  {
+                                           "get":  {
+                                                       "summary":  "Api Samplers",
+                                                       "operationId":  "api_samplers_api_v1_samplers_get",
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Successful Response",
+                                                                                     "content":  {
+                                                                                                     "application/json":  "@{schema=}"
+                                                                                                 }
+                                                                                 }
+                                                                     }
+                                                   }
+                                       },
+                  "/api/v1/adjust_mask":  {
+                                              "post":  {
+                                                           "summary":  "Api Adjust Mask",
+                                                           "operationId":  "api_adjust_mask_api_v1_adjust_mask_post",
+                                                           "requestBody":  {
+                                                                               "content":  {
+                                                                                               "application/json":  {
+                                                                                                                        "schema":  "@{$ref=#/components/schemas/AdjustMaskRequest}"
+                                                                                                                    }
+                                                                                           },
+                                                                               "required":  true
+                                                                           },
+                                                           "responses":  {
+                                                                             "200":  {
+                                                                                         "description":  "Successful Response",
+                                                                                         "content":  {
+                                                                                                         "application/json":  "@{schema=}"
+                                                                                                     }
+                                                                                     },
+                                                                             "422":  {
+                                                                                         "description":  "Validation Error",
+                                                                                         "content":  {
+                                                                                                         "application/json":  "@{schema=}"
+                                                                                                     }
+                                                                                     }
+                                                                         }
+                                                       }
+                                          }
+              },
+    "components":  {
+                       "schemas":  {
+                                       "AdjustMaskRequest":  {
+                                                                 "properties":  {
+                                                                                    "mask":  {
+                                                                                                 "type":  "string",
+                                                                                                 "title":  "Mask",
+                                                                                                 "description":  "base64 encoded mask. 255 means area to do inpaint"
+                                                                                             },
+                                                                                    "operate":  {
+                                                                                                    "type":  "string",
+                                                                                                    "enum":  [
+                                                                                                                 "expand",
+                                                                                                                 "shrink"
+                                                                                                             ],
+                                                                                                    "title":  "Operate",
+                                                                                                    "description":  "expand or shrink"
+                                                                                                },
+                                                                                    "kernel_size":  {
+                                                                                                        "type":  "integer",
+                                                                                                        "title":  "Kernel Size",
+                                                                                                        "description":  "Kernel size for expanding mask",
+                                                                                                        "default":  5
+                                                                                                    }
+                                                                                },
+                                                                 "type":  "object",
+                                                                 "required":  [
+                                                                                  "mask",
+                                                                                  "operate"
+                                                                              ],
+                                                                 "title":  "AdjustMaskRequest"
+                                                             },
+                                       "Body_api_geninfo_api_v1_gen_info_post":  {
+                                                                                     "properties":  {
+                                                                                                        "file":  {
+                                                                                                                     "type":  "string",
+                                                                                                                     "format":  "binary",
+                                                                                                                     "title":  "File"
+                                                                                                                 }
+                                                                                                    },
+                                                                                     "type":  "object",
+                                                                                     "required":  [
+                                                                                                      "file"
+                                                                                                  ],
+                                                                                     "title":  "Body_api_geninfo_api_v1_gen_info_post"
+                                                                                 },
+                                       "CV2Flag":  {
+                                                       "type":  "string",
+                                                       "enum":  [
+                                                                    "INPAINT_NS",
+                                                                    "INPAINT_TELEA"
+                                                                ],
+                                                       "title":  "CV2Flag"
+                                                   },
+                                       "FREEUConfig":  {
+                                                           "properties":  {
+                                                                              "s1":  {
+                                                                                         "type":  "number",
+                                                                                         "title":  "S1",
+                                                                                         "default":  0.9
+                                                                                     },
+                                                                              "s2":  {
+                                                                                         "type":  "number",
+                                                                                         "title":  "S2",
+                                                                                         "default":  0.2
+                                                                                     },
+                                                                              "b1":  {
+                                                                                         "type":  "number",
+                                                                                         "title":  "B1",
+                                                                                         "default":  1.2
+                                                                                     },
+                                                                              "b2":  {
+                                                                                         "type":  "number",
+                                                                                         "title":  "B2",
+                                                                                         "default":  1.4
+                                                                                     }
+                                                                          },
+                                                           "type":  "object",
+                                                           "title":  "FREEUConfig"
+                                                       },
+                                       "GenInfoResponse":  {
+                                                               "properties":  {
+                                                                                  "prompt":  {
+                                                                                                 "type":  "string",
+                                                                                                 "title":  "Prompt",
+                                                                                                 "default":  ""
+                                                                                             },
+                                                                                  "negative_prompt":  {
+                                                                                                          "type":  "string",
+                                                                                                          "title":  "Negative Prompt",
+                                                                                                          "default":  ""
+                                                                                                      }
+                                                                              },
+                                                               "type":  "object",
+                                                               "title":  "GenInfoResponse"
+                                                           },
+                                       "HTTPValidationError":  {
+                                                                   "properties":  {
+                                                                                      "detail":  {
+                                                                                                     "items":  {
+                                                                                                                   "$ref":  "#/components/schemas/ValidationError"
+                                                                                                               },
+                                                                                                     "type":  "array",
+                                                                                                     "title":  "Detail"
+                                                                                                 }
+                                                                                  },
+                                                                   "type":  "object",
+                                                                   "title":  "HTTPValidationError"
+                                                               },
+                                       "InpaintRequest":  {
+                                                              "properties":  {
+                                                                                 "image":  {
+                                                                                               "anyOf":  [
+                                                                                                             "@{type=string}",
+                                                                                                             "@{type=null}"
+                                                                                                         ],
+                                                                                               "title":  "Image",
+                                                                                               "description":  "base64 encoded image"
+                                                                                           },
+                                                                                 "mask":  {
+                                                                                              "anyOf":  [
+                                                                                                            "@{type=string}",
+                                                                                                            "@{type=null}"
+                                                                                                        ],
+                                                                                              "title":  "Mask",
+                                                                                              "description":  "base64 encoded mask"
+                                                                                          },
+                                                                                 "ldm_steps":  {
+                                                                                                   "type":  "integer",
+                                                                                                   "title":  "Ldm Steps",
+                                                                                                   "description":  "Steps for ldm model.",
+                                                                                                   "default":  20
+                                                                                               },
+                                                                                 "ldm_sampler":  {
+                                                                                                     "type":  "string",
+                                                                                                     "title":  "Ldm Sampler",
+                                                                                                     "default":  "plms",
+                                                                                                     "discription":  "Sampler for ldm model."
+                                                                                                 },
+                                                                                 "zits_wireframe":  {
+                                                                                                        "type":  "boolean",
+                                                                                                        "title":  "Zits Wireframe",
+                                                                                                        "description":  "Enable wireframe for zits model.",
+                                                                                                        "default":  true
+                                                                                                    },
+                                                                                 "hd_strategy":  {
+                                                                                                     "type":  "string",
+                                                                                                     "title":  "Hd Strategy",
+                                                                                                     "description":  "Different way to preprocess image, only used by erase models(e.g. lama/mat)",
+                                                                                                     "default":  "Crop"
+                                                                                                 },
+                                                                                 "hd_strategy_crop_trigger_size":  {
+                                                                                                                       "type":  "integer",
+                                                                                                                       "title":  "Hd Strategy Crop Trigger Size",
+                                                                                                                       "description":  "Crop trigger size for hd_strategy=CROP, if the longer side of the image is larger than this value, use crop strategy",
+                                                                                                                       "default":  800
+                                                                                                                   },
+                                                                                 "hd_strategy_crop_margin":  {
+                                                                                                                 "type":  "integer",
+                                                                                                                 "title":  "Hd Strategy Crop Margin",
+                                                                                                                 "description":  "Crop margin for hd_strategy=CROP",
+                                                                                                                 "default":  128
+                                                                                                             },
+                                                                                 "hd_strategy_resize_limit":  {
+                                                                                                                  "type":  "integer",
+                                                                                                                  "title":  "Hd Strategy Resize Limit",
+                                                                                                                  "description":  "Resize limit for hd_strategy=RESIZE",
+                                                                                                                  "default":  1280
+                                                                                                              },
+                                                                                 "prompt":  {
+                                                                                                "type":  "string",
+                                                                                                "title":  "Prompt",
+                                                                                                "description":  "Prompt for diffusion models.",
+                                                                                                "default":  ""
+                                                                                            },
+                                                                                 "negative_prompt":  {
+                                                                                                         "type":  "string",
+                                                                                                         "title":  "Negative Prompt",
+                                                                                                         "description":  "Negative prompt for diffusion models.",
+                                                                                                         "default":  ""
+                                                                                                     },
+                                                                                 "use_croper":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "title":  "Use Croper",
+                                                                                                    "description":  "Crop image before doing diffusion inpainting",
+                                                                                                    "default":  false
+                                                                                                },
+                                                                                 "croper_x":  {
+                                                                                                  "type":  "integer",
+                                                                                                  "title":  "Croper X",
+                                                                                                  "description":  "Crop x for croper",
+                                                                                                  "default":  0
+                                                                                              },
+                                                                                 "croper_y":  {
+                                                                                                  "type":  "integer",
+                                                                                                  "title":  "Croper Y",
+                                                                                                  "description":  "Crop y for croper",
+                                                                                                  "default":  0
+                                                                                              },
+                                                                                 "croper_height":  {
+                                                                                                       "type":  "integer",
+                                                                                                       "title":  "Croper Height",
+                                                                                                       "description":  "Crop height for croper",
+                                                                                                       "default":  512
+                                                                                                   },
+                                                                                 "croper_width":  {
+                                                                                                      "type":  "integer",
+                                                                                                      "title":  "Croper Width",
+                                                                                                      "description":  "Crop width for croper",
+                                                                                                      "default":  512
+                                                                                                  },
+                                                                                 "use_extender":  {
+                                                                                                      "type":  "boolean",
+                                                                                                      "title":  "Use Extender",
+                                                                                                      "description":  "Extend image before doing sd outpainting",
+                                                                                                      "default":  false
+                                                                                                  },
+                                                                                 "extender_x":  {
+                                                                                                    "type":  "integer",
+                                                                                                    "title":  "Extender X",
+                                                                                                    "description":  "Extend x for extender",
+                                                                                                    "default":  0
+                                                                                                },
+                                                                                 "extender_y":  {
+                                                                                                    "type":  "integer",
+                                                                                                    "title":  "Extender Y",
+                                                                                                    "description":  "Extend y for extender",
+                                                                                                    "default":  0
+                                                                                                },
+                                                                                 "extender_height":  {
+                                                                                                         "type":  "integer",
+                                                                                                         "title":  "Extender Height",
+                                                                                                         "description":  "Extend height for extender",
+                                                                                                         "default":  640
+                                                                                                     },
+                                                                                 "extender_width":  {
+                                                                                                        "type":  "integer",
+                                                                                                        "title":  "Extender Width",
+                                                                                                        "description":  "Extend width for extender",
+                                                                                                        "default":  640
+                                                                                                    },
+                                                                                 "sd_scale":  {
+                                                                                                  "type":  "number",
+                                                                                                  "maximum":  1.0,
+                                                                                                  "exclusiveMinimum":  0.0,
+                                                                                                  "title":  "Sd Scale",
+                                                                                                  "description":  "Resize the image before doing sd inpainting, the area outside the mask will not lose quality.",
+                                                                                                  "default":  1.0
+                                                                                              },
+                                                                                 "sd_mask_blur":  {
+                                                                                                      "type":  "integer",
+                                                                                                      "title":  "Sd Mask Blur",
+                                                                                                      "description":  "Blur the edge of mask area. The higher the number the smoother blend with the original image",
+                                                                                                      "default":  11
+                                                                                                  },
+                                                                                 "sd_strength":  {
+                                                                                                     "type":  "number",
+                                                                                                     "maximum":  1.0,
+                                                                                                     "title":  "Sd Strength",
+                                                                                                     "description":  "Strength is a measure of how much noise is added to the base image, which influences how similar the output is to the base image. Higher value means more noise and more different from the base image",
+                                                                                                     "default":  1.0
+                                                                                                 },
+                                                                                 "sd_steps":  {
+                                                                                                  "type":  "integer",
+                                                                                                  "title":  "Sd Steps",
+                                                                                                  "description":  "The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference.",
+                                                                                                  "default":  50
+                                                                                              },
+                                                                                 "sd_guidance_scale":  {
+                                                                                                           "type":  "number",
+                                                                                                           "title":  "Sd Guidance Scale",
+                                                                                                           "default":  7.5,
+                                                                                                           "help":  "Higher guidance scale encourages to generate images that are closely linked to the text prompt, usually at the expense of lower image quality."
+                                                                                                       },
+                                                                                 "sd_sampler":  {
+                                                                                                    "type":  "string",
+                                                                                                    "title":  "Sd Sampler",
+                                                                                                    "description":  "Sampler for diffusion model.",
+                                                                                                    "default":  "UniPC"
+                                                                                                },
+                                                                                 "sd_seed":  {
+                                                                                                 "type":  "integer",
+                                                                                                 "title":  "Sd Seed",
+                                                                                                 "description":  "Seed for diffusion model. -1 mean random seed",
+                                                                                                 "default":  42
+                                                                                             },
+                                                                                 "sd_match_histograms":  {
+                                                                                                             "type":  "boolean",
+                                                                                                             "title":  "Sd Match Histograms",
+                                                                                                             "description":  "Match histograms between inpainting area and original image.",
+                                                                                                             "default":  false
+                                                                                                         },
+                                                                                 "sd_outpainting_softness":  {
+                                                                                                                 "type":  "number",
+                                                                                                                 "title":  "Sd Outpainting Softness",
+                                                                                                                 "default":  20.0
+                                                                                                             },
+                                                                                 "sd_outpainting_space":  {
+                                                                                                              "type":  "number",
+                                                                                                              "title":  "Sd Outpainting Space",
+                                                                                                              "default":  20.0
+                                                                                                          },
+                                                                                 "sd_freeu":  {
+                                                                                                  "type":  "boolean",
+                                                                                                  "title":  "Sd Freeu",
+                                                                                                  "description":  "Enable freeu mode. https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu",
+                                                                                                  "default":  false
+                                                                                              },
+                                                                                 "sd_freeu_config":  {
+                                                                                                         "allOf":  [
+                                                                                                                       "@{$ref=#/components/schemas/FREEUConfig}"
+                                                                                                                   ],
+                                                                                                         "default":  {
+                                                                                                                         "s1":  0.9,
+                                                                                                                         "s2":  0.2,
+                                                                                                                         "b1":  1.2,
+                                                                                                                         "b2":  1.4
+                                                                                                                     }
+                                                                                                     },
+                                                                                 "sd_lcm_lora":  {
+                                                                                                     "type":  "boolean",
+                                                                                                     "title":  "Sd Lcm Lora",
+                                                                                                     "description":  "Enable lcm-lora mode. https://huggingface.co/docs/diffusers/main/en/using-diffusers/inference_with_lcm#texttoimage",
+                                                                                                     "default":  false
+                                                                                                 },
+                                                                                 "sd_keep_unmasked_area":  {
+                                                                                                               "type":  "boolean",
+                                                                                                               "title":  "Sd Keep Unmasked Area",
+                                                                                                               "description":  "Keep unmasked area unchanged",
+                                                                                                               "default":  true
+                                                                                                           },
+                                                                                 "cv2_flag":  {
+                                                                                                  "allOf":  [
+                                                                                                                "@{$ref=#/components/schemas/CV2Flag}"
+                                                                                                            ],
+                                                                                                  "description":  "Flag for opencv inpainting: https://docs.opencv.org/4.6.0/d7/d8b/group__photo__inpaint.html#gga8002a65f5a3328fbf15df81b842d3c3ca05e763003a805e6c11c673a9f4ba7d07",
+                                                                                                  "default":  "INPAINT_NS"
+                                                                                              },
+                                                                                 "cv2_radius":  {
+                                                                                                    "type":  "integer",
+                                                                                                    "title":  "Cv2 Radius",
+                                                                                                    "description":  "Radius of a circular neighborhood of each point inpainted that is considered by the algorithm",
+                                                                                                    "default":  4
+                                                                                                },
+                                                                                 "paint_by_example_example_image":  {
+                                                                                                                        "anyOf":  [
+                                                                                                                                      "@{type=string}",
+                                                                                                                                      "@{type=null}"
+                                                                                                                                  ],
+                                                                                                                        "title":  "Paint By Example Example Image",
+                                                                                                                        "description":  "Base64 encoded example image for paint by example model"
+                                                                                                                    },
+                                                                                 "p2p_image_guidance_scale":  {
+                                                                                                                  "type":  "number",
+                                                                                                                  "title":  "P2P Image Guidance Scale",
+                                                                                                                  "description":  "Image guidance scale",
+                                                                                                                  "default":  1.5
+                                                                                                              },
+                                                                                 "enable_controlnet":  {
+                                                                                                           "type":  "boolean",
+                                                                                                           "title":  "Enable Controlnet",
+                                                                                                           "description":  "Enable controlnet",
+                                                                                                           "default":  false
+                                                                                                       },
+                                                                                 "controlnet_conditioning_scale":  {
+                                                                                                                       "type":  "number",
+                                                                                                                       "maximum":  1.0,
+                                                                                                                       "minimum":  0.0,
+                                                                                                                       "title":  "Controlnet Conditioning Scale",
+                                                                                                                       "description":  "Conditioning scale",
+                                                                                                                       "default":  0.4
+                                                                                                                   },
+                                                                                 "controlnet_method":  {
+                                                                                                           "type":  "string",
+                                                                                                           "title":  "Controlnet Method",
+                                                                                                           "description":  "Controlnet method",
+                                                                                                           "default":  "lllyasviel/control_v11p_sd15_canny"
+                                                                                                       },
+                                                                                 "powerpaint_task":  {
+                                                                                                         "allOf":  [
+                                                                                                                       "@{$ref=#/components/schemas/PowerPaintTask}"
+                                                                                                                   ],
+                                                                                                         "description":  "PowerPaint task",
+                                                                                                         "default":  "text-guided"
+                                                                                                     },
+                                                                                 "fitting_degree":  {
+                                                                                                        "type":  "number",
+                                                                                                        "maximum":  1.0,
+                                                                                                        "exclusiveMinimum":  0.0,
+                                                                                                        "title":  "Fitting Degree",
+                                                                                                        "description":  "Control the fitting degree of the generated objects to the mask shape.",
+                                                                                                        "default":  1.0
+                                                                                                    }
+                                                                             },
+                                                              "type":  "object",
+                                                              "title":  "InpaintRequest"
+                                                          },
+                                       "ModelInfo":  {
+                                                         "properties":  {
+                                                                            "name":  {
+                                                                                         "type":  "string",
+                                                                                         "title":  "Name"
+                                                                                     },
+                                                                            "path":  {
+                                                                                         "type":  "string",
+                                                                                         "title":  "Path"
+                                                                                     },
+                                                                            "model_type":  {
+                                                                                               "$ref":  "#/components/schemas/ModelType"
+                                                                                           },
+                                                                            "is_single_file_diffusers":  {
+                                                                                                             "type":  "boolean",
+                                                                                                             "title":  "Is Single File Diffusers",
+                                                                                                             "default":  false
+                                                                                                         },
+                                                                            "need_prompt":  {
+                                                                                                "type":  "boolean",
+                                                                                                "title":  "Need Prompt",
+                                                                                                "readOnly":  true
+                                                                                            },
+                                                                            "controlnets":  {
+                                                                                                "items":  {
+                                                                                                              "type":  "string"
+                                                                                                          },
+                                                                                                "type":  "array",
+                                                                                                "title":  "Controlnets",
+                                                                                                "readOnly":  true
+                                                                                            },
+                                                                            "support_strength":  {
+                                                                                                     "type":  "boolean",
+                                                                                                     "title":  "Support Strength",
+                                                                                                     "readOnly":  true
+                                                                                                 },
+                                                                            "support_outpainting":  {
+                                                                                                        "type":  "boolean",
+                                                                                                        "title":  "Support Outpainting",
+                                                                                                        "readOnly":  true
+                                                                                                    },
+                                                                            "support_lcm_lora":  {
+                                                                                                     "type":  "boolean",
+                                                                                                     "title":  "Support Lcm Lora",
+                                                                                                     "readOnly":  true
+                                                                                                 },
+                                                                            "support_controlnet":  {
+                                                                                                       "type":  "boolean",
+                                                                                                       "title":  "Support Controlnet",
+                                                                                                       "readOnly":  true
+                                                                                                   },
+                                                                            "support_freeu":  {
+                                                                                                  "type":  "boolean",
+                                                                                                  "title":  "Support Freeu",
+                                                                                                  "readOnly":  true
+                                                                                              }
+                                                                        },
+                                                         "type":  "object",
+                                                         "required":  [
+                                                                          "name",
+                                                                          "path",
+                                                                          "model_type",
+                                                                          "need_prompt",
+                                                                          "controlnets",
+                                                                          "support_strength",
+                                                                          "support_outpainting",
+                                                                          "support_lcm_lora",
+                                                                          "support_controlnet",
+                                                                          "support_freeu"
+                                                                      ],
+                                                         "title":  "ModelInfo"
+                                                     },
+                                       "ModelType":  {
+                                                         "type":  "string",
+                                                         "enum":  [
+                                                                      "inpaint",
+                                                                      "diffusers_sd",
+                                                                      "diffusers_sd_inpaint",
+                                                                      "diffusers_sdxl",
+                                                                      "diffusers_sdxl_inpaint",
+                                                                      "diffusers_other"
+                                                                  ],
+                                                         "title":  "ModelType"
+                                                     },
+                                       "PluginInfo":  {
+                                                          "properties":  {
+                                                                             "name":  {
+                                                                                          "type":  "string",
+                                                                                          "title":  "Name"
+                                                                                      },
+                                                                             "support_gen_image":  {
+                                                                                                       "type":  "boolean",
+                                                                                                       "title":  "Support Gen Image",
+                                                                                                       "default":  false
+                                                                                                   },
+                                                                             "support_gen_mask":  {
+                                                                                                      "type":  "boolean",
+                                                                                                      "title":  "Support Gen Mask",
+                                                                                                      "default":  false
+                                                                                                  }
+                                                                         },
+                                                          "type":  "object",
+                                                          "required":  [
+                                                                           "name"
+                                                                       ],
+                                                          "title":  "PluginInfo"
+                                                      },
+                                       "PowerPaintTask":  {
+                                                              "type":  "string",
+                                                              "enum":  [
+                                                                           "text-guided",
+                                                                           "shape-guided",
+                                                                           "object-remove",
+                                                                           "outpainting"
+                                                                       ],
+                                                              "title":  "PowerPaintTask"
+                                                          },
+                                       "RunPluginRequest":  {
+                                                                "properties":  {
+                                                                                   "name":  {
+                                                                                                "type":  "string",
+                                                                                                "title":  "Name"
+                                                                                            },
+                                                                                   "image":  {
+                                                                                                 "type":  "string",
+                                                                                                 "title":  "Image",
+                                                                                                 "description":  "base64 encoded image"
+                                                                                             },
+                                                                                   "clicks":  {
+                                                                                                  "items":  {
+                                                                                                                "items":  "@{type=integer}",
+                                                                                                                "type":  "array"
+                                                                                                            },
+                                                                                                  "type":  "array",
+                                                                                                  "title":  "Clicks",
+                                                                                                  "description":  "Clicks for interactive seg, [[x,y,0/1], [x2,y2,0/1]]",
+                                                                                                  "default":  [
+
+                                                                                                              ]
+                                                                                              },
+                                                                                   "scale":  {
+                                                                                                 "type":  "number",
+                                                                                                 "title":  "Scale",
+                                                                                                 "description":  "Scale for upscaling",
+                                                                                                 "default":  2.0
+                                                                                             }
+                                                                               },
+                                                                "type":  "object",
+                                                                "required":  [
+                                                                                 "name",
+                                                                                 "image"
+                                                                             ],
+                                                                "title":  "RunPluginRequest"
+                                                            },
+                                       "ServerConfigResponse":  {
+                                                                    "properties":  {
+                                                                                       "plugins":  {
+                                                                                                       "items":  {
+                                                                                                                     "$ref":  "#/components/schemas/PluginInfo"
+                                                                                                                 },
+                                                                                                       "type":  "array",
+                                                                                                       "title":  "Plugins"
+                                                                                                   },
+                                                                                       "enableFileManager":  {
+                                                                                                                 "type":  "boolean",
+                                                                                                                 "title":  "Enablefilemanager"
+                                                                                                             },
+                                                                                       "enableAutoSaving":  {
+                                                                                                                "type":  "boolean",
+                                                                                                                "title":  "Enableautosaving"
+                                                                                                            },
+                                                                                       "enableControlnet":  {
+                                                                                                                "type":  "boolean",
+                                                                                                                "title":  "Enablecontrolnet"
+                                                                                                            },
+                                                                                       "controlnetMethod":  {
+                                                                                                                "anyOf":  [
+                                                                                                                              "@{type=string}",
+                                                                                                                              "@{type=null}"
+                                                                                                                          ],
+                                                                                                                "title":  "Controlnetmethod"
+                                                                                                            },
+                                                                                       "disableModelSwitch":  {
+                                                                                                                  "type":  "boolean",
+                                                                                                                  "title":  "Disablemodelswitch"
+                                                                                                              },
+                                                                                       "isDesktop":  {
+                                                                                                         "type":  "boolean",
+                                                                                                         "title":  "Isdesktop"
+                                                                                                     },
+                                                                                       "samplers":  {
+                                                                                                        "items":  {
+                                                                                                                      "type":  "string"
+                                                                                                                  },
+                                                                                                        "type":  "array",
+                                                                                                        "title":  "Samplers"
+                                                                                                    }
+                                                                                   },
+                                                                    "type":  "object",
+                                                                    "required":  [
+                                                                                     "plugins",
+                                                                                     "enableFileManager",
+                                                                                     "enableAutoSaving",
+                                                                                     "enableControlnet",
+                                                                                     "controlnetMethod",
+                                                                                     "disableModelSwitch",
+                                                                                     "isDesktop",
+                                                                                     "samplers"
+                                                                                 ],
+                                                                    "title":  "ServerConfigResponse"
+                                                                },
+                                       "SwitchModelRequest":  {
+                                                                  "properties":  {
+                                                                                     "name":  {
+                                                                                                  "type":  "string",
+                                                                                                  "title":  "Name"
+                                                                                              }
+                                                                                 },
+                                                                  "type":  "object",
+                                                                  "required":  [
+                                                                                   "name"
+                                                                               ],
+                                                                  "title":  "SwitchModelRequest"
+                                                              },
+                                       "ValidationError":  {
+                                                               "properties":  {
+                                                                                  "loc":  {
+                                                                                              "items":  {
+                                                                                                            "anyOf":  " "
+                                                                                                        },
+                                                                                              "type":  "array",
+                                                                                              "title":  "Location"
+                                                                                          },
+                                                                                  "msg":  {
+                                                                                              "type":  "string",
+                                                                                              "title":  "Message"
+                                                                                          },
+                                                                                  "type":  {
+                                                                                               "type":  "string",
+                                                                                               "title":  "Error Type"
+                                                                                           }
+                                                                              },
+                                                               "type":  "object",
+                                                               "required":  [
+                                                                                "loc",
+                                                                                "msg",
+                                                                                "type"
+                                                                            ],
+                                                               "title":  "ValidationError"
+                                                           }
+                                   }
+                   }
+}

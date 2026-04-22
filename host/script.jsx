@@ -6,6 +6,16 @@
 // y escribe el retorno a disco; en modo directo el retorno
 // viaja por el bridge normal de CEP.
 
+function escapeJSON(str) {
+    if (!str) return '';
+    return str.toString()
+              .replace(/\\/g, '\\\\')
+              .replace(/"/g, '\\"')
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '\\r')
+              .replace(/\t/g, '\\t');
+}
+
 // ─── checkDocument ────────────────────────────────────────────────────────────
 #target photoshop
 
@@ -19,7 +29,7 @@ function checkDocument() {
             var docs = app.documents;
             return '{"hasDocument": ' + (docs.length > 0) + '}';
         } catch (e2) {
-            return '{"hasDocument": false, "error": "' + e2.toString().replace(/"/g, '\\"') + '"}';
+            return '{"hasDocument": false, "error": "' + escapeJSON(e2) + '"}';
         }
     }
 }
@@ -55,7 +65,7 @@ function getSelections() {
         return '{"success": true, "selections": [{"id":1, "bounds":{"left":' + left + ', "top":' + top + ', "right":' + right + ', "bottom":' + bottom + '}, "width":' + w + ', "height":' + h + '}], "documentWidth": ' + docW + ', "documentHeight": ' + docH + '}';
 
     } catch (e) {
-        return '{"success": false, "error": "' + e.toString().replace(/"/g, '\\"') + '"}';
+        return '{"success": false, "error": "' + escapeJSON(e) + '"}';
     }
 }
 
@@ -153,6 +163,277 @@ function exportSelection(tempPath, index) {
         return '{"success": true, "filePath": "' + filePath.replace(/\\/g, '/') + '", "bounds": {"left": ' + left + ', "top": ' + top + ', "right": ' + right + ', "bottom": ' + bottom + ', "width": ' + w + ', "height": ' + h + '}}';
 
     } catch (e) {
-        return '{"success": false, "error": "exportSelection: ' + e.toString().replace(/"/g, '\\"') + '"}';
+        return '{"success": false, "error": "exportSelection: ' + escapeJSON(e) + '"}';
+    }
+}
+
+// ─── exportSelectionWithMask ────────────────────────────────────────────────
+// Exporta imagen con CONTEXTO alrededor de la selección + máscara exacta del lazo.
+// LaMa necesita el fondo alrededor para poder reconstruirlo correctamente.
+function exportSelectionWithMask(tempPath, index) {
+    try {
+        if (app.documents.length === 0) {
+            return '{"success": false, "error": "No hay documento abierto"}';
+        }
+
+        var doc = app.activeDocument;
+        var bounds;
+        try {
+            bounds = doc.selection.bounds;
+        } catch (e) {
+            return '{"success": false, "error": "No hay selección activa al exportar"}';
+        }
+
+        var folder = new Folder(tempPath);
+        if (!folder.exists) { folder.create(); }
+
+        var imageFilePath = tempPath + '/kohari_clean_' + index + '_image.png';
+        var maskFilePath  = tempPath + '/kohari_clean_' + index + '_mask.png';
+
+        // ── Calcular bounds con relleno de contexto ─────────────────────────
+        var selLeft   = parseFloat(bounds[0]);
+        var selTop    = parseFloat(bounds[1]);
+        var selRight  = parseFloat(bounds[2]);
+        var selBottom = parseFloat(bounds[3]);
+        var selW = selRight - selLeft;
+        var selH = selBottom - selTop;
+
+        // Padding: 60% del tamaño de la selección en cada lado, mín 40px, máx 300px
+        var padX = Math.min(300, Math.max(40, Math.round(selW * 0.6)));
+        var padY = Math.min(300, Math.max(40, Math.round(selH * 0.6)));
+
+        var docW = parseFloat(doc.width.as('px'));
+        var docH = parseFloat(doc.height.as('px'));
+
+        var cropLeft   = Math.max(0, selLeft - padX);
+        var cropTop    = Math.max(0, selTop  - padY);
+        var cropRight  = Math.min(docW, selRight  + padX);
+        var cropBottom = Math.min(docH, selBottom + padY);
+        var cropBounds = [cropLeft, cropTop, cropRight, cropBottom];
+
+        // ── PREPARAR SELECCIÓN ANTES DE DUPLICAR ─────────────────────────────
+        // Muchas versiones de PS pierden la selección activa al usar doc.duplicate()
+        // Así que guardamos la selección del lazo en el documento original antes de clonar.
+        var tempChan = doc.channels.add();
+        tempChan.name = "IA_Temp_Selection";
+        doc.selection.store(tempChan);
+
+        try {
+            // ── IMAGEN: doc plano recortado con contexto ────────────────────────
+            var imgDoc = doc.duplicate();
+            try {
+                imgDoc.flatten();
+                if (imgDoc.mode !== DocumentMode.RGB) {
+                    imgDoc.changeMode(ChangeMode.RGB);
+                }
+                imgDoc.crop(cropBounds);
+                var pngOpts = new PNGSaveOptions();
+                pngOpts.compression = 3;
+                pngOpts.interlaced = false;
+                imgDoc.saveAs(new File(imageFilePath), pngOpts, true, Extension.LOWERCASE);
+            } finally {
+                imgDoc.close(SaveOptions.DONOTSAVECHANGES);
+            }
+
+            // ── MÁSCARA: mismas dimensiones, forma exacta del lazo ─────────────
+            var maskDoc = doc.duplicate();
+            try {
+                app.activeDocument = maskDoc;
+
+                // Crear capa nueva en blanco y pintarla toda de NEGRO (fondo a preservar)
+                var maskLayer = maskDoc.artLayers.add();
+                maskDoc.selection.deselect();
+                maskDoc.selection.selectAll();
+                var black = new SolidColor(); black.rgb.red = black.rgb.green = black.rgb.blue = 0;
+                maskDoc.selection.fill(black);
+
+                // Cargar la silueta exacta del lazo desde nuestro canal seguro
+                var maskChannel = maskDoc.channels.getByName("IA_Temp_Selection");
+                maskDoc.selection.load(maskChannel);
+
+                // Expandir la selección para cubrir los bordes (anti-aliasing de los textos)
+                var prevDialogs = app.displayDialogs;
+                app.displayDialogs = DialogModes.NO;
+                try { maskDoc.selection.expand(3); } catch (e) {}
+                app.displayDialogs = prevDialogs;
+
+                // Pintar la silueta (área a limpiar) de BLANCO
+                var white = new SolidColor(); white.rgb.red = white.rgb.green = white.rgb.blue = 255;
+                maskDoc.selection.fill(white);
+
+                maskDoc.selection.deselect();
+
+                // Acoplar asegurando que solo queda nuestra máscara blanca y negra
+                maskDoc.flatten();
+
+                // Mantener en RGB (algunos scripts de python fallan con Grayscale)
+                if (maskDoc.mode !== DocumentMode.RGB) {
+                    maskDoc.changeMode(ChangeMode.RGB);
+                }
+                
+                maskDoc.crop(cropBounds);
+                maskDoc.saveAs(new File(maskFilePath), pngOpts, true, Extension.LOWERCASE);
+            } finally {
+                maskDoc.close(SaveOptions.DONOTSAVECHANGES);
+            }
+        } finally {
+            // DEVOLVER AL USUARIO SU ESTADO INICIAL
+            app.activeDocument = doc;
+            doc.selection.load(tempChan);
+            tempChan.remove(); // Limpiar el canal temporal del doc original
+        }
+
+        return '{"success": true' +
+               ', "imagePath": "' + imageFilePath.replace(/\\/g, '/') + '"' +
+               ', "maskPath": "'  + maskFilePath.replace(/\\/g,  '/') + '"' +
+               ', "selBounds": {"left": ' + selLeft + ', "top": ' + selTop + ', "right": ' + selRight + ', "bottom": ' + selBottom + '}' +
+               ', "cropBounds": {"left": ' + cropLeft + ', "top": ' + cropTop + ', "right": ' + cropRight + ', "bottom": ' + cropBottom + '}' +
+               '}';
+
+    } catch (e) {
+        return '{"success": false, "error": "exportSelectionWithMask: ' + escapeJSON(e) + '"}';
+    }
+}
+
+
+// ─── saveAndPasteBase64Image ────────────────────────────────────────────────
+// Recibe la ruta a un archivo .txt con el Base64 de la imagen limpia,
+// lo decodifica a binario, lo guarda como PNG y lo pega como nueva capa.
+// cropLeft/cropTop indican la posición en el doc original (para alinear la capa).
+function saveAndPasteBase64Image(b64FilePath, tempPath, index, cropLeft, cropTop) {
+    try {
+        if (app.documents.length === 0) {
+            return '{"success": false, "error": "No hay documento abierto"}';
+        }
+
+        // ── Leer archivo de base64 ──────────────────────────────────────────
+        var b64File = new File(b64FilePath);
+        if (!b64File.exists) {
+            return '{"success": false, "error": "Archivo base64 no encontrado: ' + b64FilePath + '"}';
+        }
+        b64File.encoding = 'UTF-8';
+        b64File.open('r');
+        var base64Data = b64File.read();
+        b64File.close();
+
+        if (!base64Data || base64Data.length === 0) {
+            return '{"success": false, "error": "El archivo base64 est\u00e1 vac\u00edo"}';
+        }
+
+        // ── Crear directorio temporal ───────────────────────────────────────
+        var folder = new Folder(tempPath);
+        if (!folder.exists) { folder.create(); }
+
+        var filePath = tempPath + '/kohari_cleaned_' + index + '_result.png';
+        var outFile = new File(filePath);
+
+        // ── Decodificar Base64 \u2192 binario ────────────────────────────────────
+        var b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        var raw = base64Data.replace(/[^A-Za-z0-9+\/=]/g, '');
+        var bytes = [];
+        var i = 0;
+        while (i < raw.length) {
+            var c1 = b64chars.indexOf(raw.charAt(i++));
+            var c2 = b64chars.indexOf(raw.charAt(i++));
+            var c3 = b64chars.indexOf(raw.charAt(i++));
+            var c4 = b64chars.indexOf(raw.charAt(i++));
+            bytes.push((c1 << 2) | (c2 >> 4));
+            if (c3 !== 64) bytes.push(((c2 & 15) << 4) | (c3 >> 2));
+            if (c4 !== 64) bytes.push(((c3 & 3) << 6) | c4);
+        }
+
+        // ── Escribir archivo binario ────────────────────────────────────────
+        outFile.encoding = 'binary';
+        outFile.open('w');
+        for (var b = 0; b < bytes.length; b++) {
+            outFile.write(String.fromCharCode(bytes[b]));
+        }
+        outFile.close();
+
+        if (!outFile.exists) {
+            return '{"success": false, "error": "No se pudo crear el archivo: ' + filePath + '"}';
+        }
+
+        // ── Pegar en Photoshop ──────────────────────────────────────────────
+        var doc = app.activeDocument;
+        var cleanDoc = app.open(outFile);
+        try {
+            cleanDoc.selection.selectAll();
+            cleanDoc.selection.copy();
+            cleanDoc.close(SaveOptions.DONOTSAVECHANGES);
+
+            var pastedLayer = doc.paste();
+            pastedLayer.name = 'Kohari_Cleaned_' + index;
+
+            // Mover la capa a la posición del crop padded
+            // (para que coincida con la posición en la página original)
+            var layerBounds = pastedLayer.bounds;
+            var layerLeft = parseFloat(layerBounds[0]);
+            var layerTop  = parseFloat(layerBounds[1]);
+            pastedLayer.translate(cropLeft - layerLeft, cropTop - layerTop);
+
+            return '{"success": true, "layerName": "' + pastedLayer.name + '", "filePath": "' + filePath.replace(/\\/g, '/') + '"}';
+        } catch (pasteErr) {
+            try { cleanDoc.close(SaveOptions.DONOTSAVECHANGES); } catch (e2) {}
+            throw pasteErr;
+        }
+
+    } catch (e) {
+        return '{"success": false, "error": "saveAndPasteBase64Image: ' + escapeJSON(e) + '"}';
+    }
+}
+
+
+// ─── pasteCleanedImage ──────────────────────────────────────────────────────
+// Reemplaza el contenido de la selección con una imagen limpia
+// La imagen se pega como nueva capa
+function pasteCleanedImage(imagePath) {
+    try {
+        if (app.documents.length === 0) {
+            return '{"success": false, "error": "No hay documento abierto"}';
+        }
+
+        var doc = app.activeDocument;
+
+        // Verificar que hay selección
+        var hasSelection = false;
+        try {
+            hasSelection = doc.selection !== null;
+        } catch (e) {
+            return '{"success": false, "error": "No hay selección activa"}';
+        }
+
+        if (!hasSelection) {
+            return '{"success": false, "error": "No hay selección activa para pegar"}';
+        }
+
+        // Abrir imagen limpia
+        var imgFile = new File(imagePath);
+        if (!imgFile.exists) {
+            return '{"success": false, "error": "El archivo no existe: ' + imagePath + '"}';
+        }
+
+        var cleanDoc = app.open(imgFile);
+        try {
+            // Seleccionar todo y copiar
+            cleanDoc.selection.selectAll();
+            cleanDoc.selection.copy();
+            cleanDoc.close(SaveOptions.DONOTSAVECHANGES);
+
+            // Pegar en el documento original como nueva capa
+            var pastedLayer = doc.paste();
+            pastedLayer.name = 'Kohari_Cleaned_' + Date.now();
+
+            // Alinear con la selección original
+            // La capa pegada ya está en la posición correcta por defecto
+
+            return '{"success": true, "layerName": "' + pastedLayer.name + '"}';
+        } catch (e) {
+            try { cleanDoc.close(SaveOptions.DONOTSAVECHANGES); } catch (e2) { }
+            throw e;
+        }
+
+    } catch (e) {
+        return '{"success": false, "error": "pasteCleanedImage: ' + escapeJSON(e) + '"}';
     }
 }

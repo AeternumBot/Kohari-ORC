@@ -69,6 +69,10 @@
             singleLine:     document.getElementById('singleLine'),
             preprocess:     document.getElementById('preprocess'),
             copyClipboard:  document.getElementById('copyClipboard'),
+            // AI Cleaner elements
+            cleanWithAIBtn: document.getElementById('cleanWithAIBtn'),
+            aiStatus:       document.getElementById('aiStatus'),
+            aiStatusText:   document.getElementById('aiStatusText'),
         };
     }
 
@@ -195,10 +199,25 @@
     // ============================================
 
     function bindEvents() {
+        // Tab navigation
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.dataset.tab;
+                // Remove active from all
+                tabBtns.forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                // Add active to selected
+                btn.classList.add('active');
+                document.getElementById('tab-' + tabId).classList.add('active');
+            });
+        });
+
         if (elements.scanBtn)    elements.scanBtn.addEventListener('click', handleScan);
         if (elements.clearBtn)   elements.clearBtn.addEventListener('click', handleClear);
         if (elements.copyAllBtn) elements.copyAllBtn.addEventListener('click', handleCopyAll);
         if (elements.newStripBtn) elements.newStripBtn.addEventListener('click', handleNewStrip);
+        if (elements.cleanWithAIBtn) elements.cleanWithAIBtn.addEventListener('click', handleCleanWithAI);
 
         if (elements.languageInputs) {
             elements.languageInputs.forEach(input => {
@@ -304,6 +323,199 @@
         if (checkedEngine) checkedEngine.closest('.engine-option').classList.add('selected');
     }
 
+
+    // ============================================
+    // LIMPIEZA CON IA (HUGGING FACE SPACES)
+    // ============================================
+
+    async function handleCleanWithAI() {
+        if (state.isProcessing) {
+            showToast('Ya se está procesando...', 'warning');
+            return;
+        }
+
+        if (!window.KohariPhotoshop || !window.KohariPhotoshop.isAvailable()) {
+            showToast('Photoshop no detectado. Abre el panel desde Photoshop.', 'error');
+            return;
+        }
+
+        const api = window.KohariPhotoshop.api;
+
+        try {
+            state.isProcessing = true;
+            elements.cleanWithAIBtn.disabled = true;
+            showAIStatus(true, 'Exportando imagen y máscara...');
+
+            // 1. Verificar documento
+            const docCheck = await api.checkDocument();
+            if (!docCheck.hasDocument) {
+                throw new Error('No hay documento abierto en Photoshop.');
+            }
+
+            // 2. Verificar selección
+            const selectionData = await api.getSelection();
+            if (!selectionData.success) {
+                const errMsg = selectionData.error || 'Sin selección';
+                if (errMsg.includes('No selection') || errMsg.includes('No hay selección') || errMsg.includes('No se encontró')) {
+                    throw new Error('No hay selección activa. Selecciona un área con lazo o varita mágica.');
+                }
+                throw new Error('Error al obtener selección: ' + errMsg);
+            }
+
+            // 3. Exportar imagen + máscara
+            showAIStatus(true, 'Generando máscara...');
+            const tempPath = api.getTempPath();
+            const exportIndex = Date.now(); // Usar timestamp para evitar colisiones
+            const exportResult = await api.exportSelectionWithMask(tempPath, exportIndex);
+
+            if (!exportResult.success) {
+                throw new Error('No se pudo exportar: ' + (exportResult.error || 'Error desconocido'));
+            }
+
+            // 4. Leer archivos como Base64
+            showAIStatus(true, 'Cargando archivos...');
+            const imageBase64 = await api.readFileAsBase64(exportResult.imagePath);
+            const maskBase64 = await api.readFileAsBase64(exportResult.maskPath);
+
+            if (!imageBase64 || !maskBase64) {
+                throw new Error('No se pudieron leer los archivos exportados.');
+            }
+
+            // 5. Enviar a Hugging Face Spaces
+            showAIStatus(true, 'Enviando a Hugging Face (puede tardar 5-15s)...');
+            let cleanedBase64 = await cleanWithIOPaint(imageBase64, maskBase64);
+
+            if (!cleanedBase64) {
+                throw new Error('La IA no devolvió ninguna imagen.');
+            }
+
+            // Quitar el prefijo data: si lo trae (ej. "data:image/png;base64,...")
+            if (cleanedBase64.includes(',')) {
+                cleanedBase64 = cleanedBase64.split(',')[1];
+            }
+
+            // 6+7. Guardar en disco Y pegar en PS — todo en una sola llamada JSX
+            //       (evita Error 1/2 de cep.fs en Photoshop modificado)
+            showAIStatus(true, 'Guardando y pegando en Photoshop...');
+            const crop = exportResult.cropBounds || { left: 0, top: 0 };
+            const pasteResult = await api.saveAndPasteBase64Image(
+                cleanedBase64, tempPath, exportIndex, crop.left, crop.top
+            );
+
+            if (!pasteResult.success) {
+                throw new Error('No se pudo pegar: ' + (pasteResult.error || 'Error desconocido'));
+            }
+
+            // 8. Éxito
+            showAIStatus(false, '');
+            showToast('¡Limpieza completada! Capa: ' + pasteResult.layerName, 'success');
+            updateStatus('IA: Selección limpiada como "' + pasteResult.layerName + '"', 'ready');
+
+        } catch (error) {
+            console.error('[Kohari ORC] Error en limpieza IA:', error);
+            showAIStatus(false, '');
+            updateStatus('Error IA: ' + error.message, 'error');
+            showToast(error.message, 'error');
+        } finally {
+            state.isProcessing = false;
+            elements.cleanWithAIBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Envía imagen + máscara a iopaint-lama en Hugging Face Spaces
+     * @param {string} imageBase64 - Imagen original en base64 (sin prefix data:image)
+     * @param {string} maskBase64 - Máscara en base64 (blanco=área a limpiar)
+     * @returns {Promise<string>} - Imagen limpia en base64
+     */
+    async function cleanWithIOPaint(imageBase64, maskBase64) {
+        const IOPAINT_URL = 'https://sanster-iopaint-lama.hf.space/api/v1/inpaint';
+
+        const requestBody = {
+            image: "data:image/png;base64," + imageBase64,
+            mask: "data:image/png;base64," + maskBase64,
+            ldm_steps: 1,
+            ldm_sampler: "ddim",
+            hd_strategy: "Original",
+            cv2_flag: "INPAINT_NS",
+            cv2_radius: 4
+        };
+
+        // Intentar con timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+        try {
+            const response = await fetch(IOPAINT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'image/*, application/json'
+                },
+                body: JSON.stringify(requestBody),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Error desconocido');
+                if (response.status === 503) {
+                    throw new Error('El servicio está ocupado. Intenta de nuevo en unos segundos.');
+                }
+                throw new Error('Error del servidor: ' + response.status + ' - ' + errorText);
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+
+            if (contentType.includes('application/json')) {
+                const data = await response.json();
+                // La API puede devolver la imagen como campo 'image' o directamente como string
+                let b64 = typeof data === 'object' ? (data.image || data.result || null) : data;
+                if (typeof b64 === 'string' && b64.includes(',')) b64 = b64.split(',')[1];
+                return b64;
+            }
+
+            // Respuesta binaria (image/png) — convertir a base64 con FileReader (evita stack overflow en imágenes grandes)
+            const resultBlob = await response.blob();
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const dataUrl = reader.result;
+                    // Extraer solo la parte Base64 (después de la coma)
+                    resolve(dataUrl.split(',')[1]);
+                };
+                reader.onerror = () => reject(new Error('No se pudo leer la imagen de respuesta.'));
+                reader.readAsDataURL(resultBlob);
+            });
+
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error('Timeout: El servidor no respondió en 60 segundos. Intenta de nuevo.');
+            }
+            throw error;
+        }
+    }
+
+    function base64ToBlob(base64, mimeType) {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+    }
+
+    function showAIStatus(show, text) {
+        if (elements.aiStatus) {
+            elements.aiStatus.style.display = show ? 'flex' : 'none';
+        }
+        if (elements.aiStatusText && text) {
+            elements.aiStatusText.textContent = text;
+        }
+    }
 
     // ============================================
     // FUNCIÓN PRINCIPAL DE ESCANEO
