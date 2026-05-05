@@ -133,6 +133,142 @@ function saveAndPasteBase64Image(b64FilePath, tempPath, index, cropLeft, cropTop
     }
 }
 
+// --- UPSCALE IA ---
+
+/**
+ * Exporta el documento activo aplanado como JPEG para upscale en HF Spaces.
+ * JPEG calidad 10 (≈92%) mantiene el archivo en 3-6MB incluso en tiras de 25k px,
+ * lo que permite enviar la imagen completa sin necesidad de tiling.
+ */
+function exportFullDocument(tempPath, index) {
+    var prevDialogs = app.displayDialogs;
+    app.displayDialogs = DialogModes.NO;
+    try {
+        if (app.documents.length === 0)
+            return '{"success": false, "error": "No hay documento abierto"}';
+
+        var doc    = app.activeDocument;
+
+        // Guardar dimensiones ANTES de duplicar para devolverlas al JS
+        var originalWidth  = Math.round(doc.width.as('px'));
+        var originalHeight = Math.round(doc.height.as('px'));
+
+        var dupDoc = doc.duplicate();
+        dupDoc.flatten();
+        if (dupDoc.mode !== DocumentMode.RGB) dupDoc.changeMode(ChangeMode.RGB);
+
+        var filePath = tempPath + '/kohari_upscale_' + index + '.jpg';
+        var jpgOpts  = new JPEGSaveOptions();
+        jpgOpts.quality = 10; // Escala PS 0-12; 10 ≈ calidad 92% — buen balance tamaño/calidad
+        dupDoc.saveAs(new File(filePath), jpgOpts, true, Extension.LOWERCASE);
+        dupDoc.close(SaveOptions.DONOTSAVECHANGES);
+
+        app.displayDialogs = prevDialogs;
+        return '{"success": true, "imagePath": "' + filePath + '", "originalWidth": ' + originalWidth + ', "originalHeight": ' + originalHeight + '}';
+    } catch (e) {
+        app.displayDialogs = prevDialogs;
+        return '{"success": false, "error": "exportFullDocument: ' + escapeJSON(e) + '"}';
+    }
+}
+
+/**
+ * Pega la imagen upscaleada como capa nueva y la redimensiona al tamaño
+ * original del documento. El resultado neto es la misma resolución pero
+ * con ruido eliminado y detalles mejorados por Real-ESRGAN.
+ */
+function pasteAndResizeUpscaled(imagePath, targetWidth, targetHeight, index) {
+    var prevDialogs = app.displayDialogs;
+    app.displayDialogs = DialogModes.NO;
+    try {
+        var outFile = new File(imagePath);
+        if (!outFile.exists)
+            return '{"success": false, "error": "Archivo upscaleado no encontrado en: ' + imagePath + '"}';
+
+        var doc   = app.activeDocument;
+        var upDoc = app.open(outFile);
+        upDoc.selection.selectAll();
+        upDoc.selection.copy();
+        upDoc.close(SaveOptions.DONOTSAVECHANGES);
+
+        var pastedLayer  = doc.paste();
+        var layerName    = 'Kohari_Upscaled_' + index;
+        pastedLayer.name = layerName;
+
+        // Calcular escala para que la capa coincida exactamente con el documento original
+        var lb     = pastedLayer.bounds;
+        var layerW = parseFloat(lb[2]) - parseFloat(lb[0]);
+        var layerH = parseFloat(lb[3]) - parseFloat(lb[1]);
+
+        var scaleX = (targetWidth  / layerW) * 100;
+        var scaleY = (targetHeight / layerH) * 100;
+
+        pastedLayer.resize(scaleX, scaleY, AnchorPosition.TOPLEFT);
+
+        // Forzar posición 0,0 para que quede exactamente encima del original
+        var lb2 = pastedLayer.bounds;
+        pastedLayer.translate(-parseFloat(lb2[0]), -parseFloat(lb2[1]));
+
+        app.displayDialogs = prevDialogs;
+        return '{"success": true, "layerName": "' + layerName + '"}';
+    } catch (e) {
+        app.displayDialogs = prevDialogs;
+        return '{"success": false, "error": "pasteAndResizeUpscaled: ' + escapeJSON(e) + '"}';
+    }
+}
+
+function pasteUpscaledTiles(pathsStr, targetWidth, targetHeight, index, chunkHeightRaw) {
+    var prevDialogs = app.displayDialogs;
+    app.displayDialogs = DialogModes.NO;
+    try {
+        var paths = pathsStr.split("|||");
+        var doc = app.activeDocument;
+        
+        // Crear un grupo para contener todas las piezas
+        var group = doc.layerSets.add();
+        group.name = 'Kohari_Upscaled_' + index;
+        
+        var chunkHeight = parseFloat(chunkHeightRaw);
+        
+        for (var i = 0; i < paths.length; i++) {
+            var outFile = new File(paths[i]);
+            if (!outFile.exists) continue;
+            
+            var upDoc = app.open(outFile);
+            upDoc.selection.selectAll();
+            upDoc.selection.copy();
+            upDoc.close(SaveOptions.DONOTSAVECHANGES);
+            
+            doc.activeLayer = group;
+            var pastedLayer = doc.paste();
+            pastedLayer.name = 'Kohari_Chunk_' + i;
+            
+            // Las piezas vienen escaladas ×2, así que las encogemos al 50%
+            // o según la relación del ancho original.
+            var lb = pastedLayer.bounds;
+            var layerW = parseFloat(lb[2]) - parseFloat(lb[0]);
+            
+            // El targetWidth es el ancho total de la tira. Como la tira completa fue cortada a lo ancho,
+            // la pieza cortada abarca todo el ancho del documento original.
+            var scale = (targetWidth / layerW) * 100;
+            pastedLayer.resize(scale, scale, AnchorPosition.TOPLEFT);
+            
+            // Mover a la coordenada Y correcta: el chunk 'i' empezaba en Y = i * chunkHeight
+            var lb2 = pastedLayer.bounds;
+            var targetY = i * chunkHeight;
+            
+            pastedLayer.translate(-parseFloat(lb2[0]), targetY - parseFloat(lb2[1]));
+        }
+        
+        app.displayDialogs = prevDialogs;
+        return '{"success": true, "layerName": "' + group.name + '"}';
+    } catch (e) {
+        app.displayDialogs = prevDialogs;
+        return '{"success": false, "error": "pasteUpscaledTiles: ' + escapeJSON(e) + '"}';
+    }
+}
+
+
+
 // --- LIMPIEZA DE BURBUJAS ---
 function fillBubblesWhite() {
     var prevDialogs = app.displayDialogs;

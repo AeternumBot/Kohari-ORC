@@ -692,23 +692,38 @@
 
             const { imagePath, originalWidth, originalHeight } = exportResult;
 
-            // 3. Leer JPEG como base64
-            showUpscaleStatus(true, 'Cargando imagen...');
+            // 3. Leer JPEG como base64 y cargar en un objeto Image
+            showUpscaleStatus(true, 'Cargando imagen para dividir...');
             const imageBase64 = await api.readFileAsBase64(imagePath);
             if (!imageBase64)
                 throw new Error('No se pudo leer el archivo exportado.');
 
-            // 4. Enviar a Real-ESRGAN ×2 en Hugging Face
-            showUpscaleStatus(true, 'Mejorando calidad con IA… puede tardar 20-60s');
-            let upscaledBase64 = await upscaleWithRealESRGAN(imageBase64, UPSCALE_CONFIG.SCALE);
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = 'data:image/jpeg;base64,' + imageBase64;
+            });
 
-            if (!upscaledBase64)
-                throw new Error('La IA no devolvió ninguna imagen.');
-            if (upscaledBase64.includes(','))
-                upscaledBase64 = upscaledBase64.split(',')[1];
+            // 4. Calcular bloques (Tiling) para evitar timeouts en Hugging Face
+            const CHUNK_HEIGHT = 1500;
+            const OVERLAP = 50; // Superposición para evitar marcas de corte (seams)
+            let currentY = 0;
+            let chunks = [];
 
-            // 5. Escribir resultado en disco con cep.fs
-            showUpscaleStatus(true, 'Guardando resultado...');
+            while (currentY < img.height) {
+                let sliceHeight = CHUNK_HEIGHT + OVERLAP;
+                if (currentY + sliceHeight > img.height) {
+                    sliceHeight = img.height - currentY;
+                }
+                chunks.push({ y: currentY, height: sliceHeight });
+                currentY += CHUNK_HEIGHT;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            let upscaledPaths = [];
+            
             let safePath = tempPath
                 .replace(/^file:\/+/i, '')
                 .replace(/^file:\\+/i, '')
@@ -716,23 +731,43 @@
                 .replace(/\/$/, '');
             safePath = decodeURIComponent(safePath);
 
-            const upFilePath    = safePath + '/kohari_upscaled_' + exportIndex + '.png';
-            const upFilePathWin = upFilePath.replace(/\//g, '\\');
+            // 5. Procesar cada bloque secuencialmente
+            for (let i = 0; i < chunks.length; i++) {
+                const prefix = `[Sección ${i + 1}/${chunks.length}]`;
+                showUpscaleStatus(true, `${prefix} Cortando...`);
 
-            if (window.cep && window.cep.fs) {
-                const isWin     = navigator.appVersion.indexOf('Win') !== -1;
-                const writeTo   = isWin ? upFilePathWin : upFilePath;
-                const wr = window.cep.fs.writeFile(writeTo, upscaledBase64, window.cep.encoding.Base64);
-                if (wr.err !== window.cep.fs.NO_ERROR)
-                    throw new Error('No se pudo escribir el archivo resultado: error ' + wr.err);
-            } else {
-                throw new Error('CEP FS no disponible.');
+                canvas.width = img.width;
+                canvas.height = chunks[i].height;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, -chunks[i].y);
+
+                const chunkB64 = canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+
+                let upB64 = await upscaleWithRealESRGAN(chunkB64, UPSCALE_CONFIG.SCALE, prefix);
+
+                if (!upB64) throw new Error(`${prefix} La IA no devolvió imagen.`);
+                if (upB64.includes(',')) upB64 = upB64.split(',')[1];
+
+                const upFilePath = safePath + '/kohari_upscaled_' + exportIndex + '_chunk_' + i + '.png';
+                const upFilePathWin = upFilePath.replace(/\//g, '\\');
+
+                if (window.cep && window.cep.fs) {
+                    const isWin = navigator.appVersion.indexOf('Win') !== -1;
+                    const writeTo = isWin ? upFilePathWin : upFilePath;
+                    const wr = window.cep.fs.writeFile(writeTo, upB64, window.cep.encoding.Base64);
+                    if (wr.err !== window.cep.fs.NO_ERROR)
+                        throw new Error(`Error al escribir ${prefix}: ` + wr.err);
+                } else {
+                    throw new Error('CEP FS no disponible.');
+                }
+                upscaledPaths.push(upFilePath);
             }
 
-            // 6. Pegar en PS y redimensionar al tamaño original del documento
-            showUpscaleStatus(true, 'Pegando y ajustando tamaño en Photoshop...');
-            const pasteResult = await api.pasteAndResizeUpscaled(
-                upFilePath, originalWidth, originalHeight, exportIndex
+            // 6. Ensamblar en Photoshop
+            showUpscaleStatus(true, 'Ensamblando bloques en Photoshop...');
+            const pasteResult = await api.pasteUpscaledTiles(
+                upscaledPaths, originalWidth, originalHeight, exportIndex, CHUNK_HEIGHT
             );
             if (!pasteResult.success)
                 throw new Error('No se pudo pegar: ' + (pasteResult.error || 'desconocido'));
@@ -773,7 +808,7 @@
      * 1. POST /gradio_api/call/v2/run  { image: { url: "data:image/jpeg;base64,..." } } → EVENT_ID
      * 2. GET  /gradio_api/call/run/{EVENT_ID} → SSE stream con resultado
      */
-    async function upscaleWithRealESRGAN(imageBase64, scale) {
+    async function upscaleWithRealESRGAN(imageBase64, scale, prefixText = '') {
         const { HF_SPACE, TIMEOUT_MS } = UPSCALE_CONFIG;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -784,7 +819,7 @@
             const form = new FormData();
             form.append('files', blob, 'tira.jpg');
 
-            showUpscaleStatus(true, 'Subiendo imagen al servidor...');
+            showUpscaleStatus(true, `${prefixText} Subiendo al servidor...`);
             const uploadRes = await fetch(`${HF_SPACE}/gradio_api/upload`, {
                 method: 'POST', body: form, signal: controller.signal
             });
@@ -794,7 +829,7 @@
             const uploadData   = await uploadRes.json();
             const uploadedPath = Array.isArray(uploadData) ? uploadData[0] : uploadData;
 
-            showUpscaleStatus(true, 'Iniciando inferencia...');
+            showUpscaleStatus(true, `${prefixText} Iniciando inferencia...`);
             // 2. Iniciar inferencia con el path subido
             const callRes = await fetch(`${HF_SPACE}/gradio_api/call/run`, {
                 method: 'POST',
@@ -832,7 +867,7 @@
 
                 const tick = setInterval(() => {
                     elapsed += 2;
-                    showUpscaleStatus(true, 'Procesando en servidor… ' + elapsed + 's');
+                    showUpscaleStatus(true, `${prefixText} Procesando en servidor… ` + elapsed + 's');
                 }, 2000);
 
                 function processChunk() {
