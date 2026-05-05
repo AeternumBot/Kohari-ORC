@@ -767,65 +767,123 @@
      * @param {number} scale       - Factor de escala (2)
      * @returns {Promise<string>}  - Data URL de la imagen escalada
      */
+    /**
+     * API confirmada del Space Valkkkk/kohari-tools-upscaler.
+     * El campo "url" acepta base64 directamente — sin upload separado.
+     * 1. POST /gradio_api/call/v2/run  { image: { url: "data:image/jpeg;base64,..." } } → EVENT_ID
+     * 2. GET  /gradio_api/call/run/{EVENT_ID} → SSE stream con resultado
+     */
     async function upscaleWithRealESRGAN(imageBase64, scale) {
         const { HF_SPACE, TIMEOUT_MS } = UPSCALE_CONFIG;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         try {
-            // 1. Subir JPEG al Space
-            const blob = base64ToBlob(imageBase64, 'image/jpeg');
-            const form = new FormData();
-            form.append('files', blob, 'tira.jpg');
-
-            const uploadRes = await fetch(`${HF_SPACE}/gradio_api/upload`, {
-                method: 'POST', body: form, signal: controller.signal
-            });
-            if (!uploadRes.ok)
-                throw new Error('Error al subir imagen al servidor: HTTP ' + uploadRes.status);
-
-            const uploadData   = await uploadRes.json();
-            const uploadedPath = Array.isArray(uploadData) ? uploadData[0] : uploadData;
-
-            // 2. Llamar al modelo
-            const predictRes = await fetch(`${HF_SPACE}/gradio_api/run/predict`, {
+            // 1. Iniciar inferencia — imagen como data URL base64 directa
+            const callRes = await fetch(`${HF_SPACE}/gradio_api/call/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    fn_index: 0,
-                    data: [
-                        { path: uploadedPath, orig_name: 'tira.jpg' },
-                        scale
-                    ]
+                    data: [{
+                        url:       'data:image/jpeg;base64,' + imageBase64,
+                        orig_name: 'tira.jpg',
+                        mime_type: 'image/jpeg',
+                        meta:      { _type: 'gradio.FileData' }
+                    }]
                 }),
                 signal: controller.signal
             });
+            if (!callRes.ok)
+                throw new Error('Error al iniciar proceso: HTTP ' + callRes.status);
+
+            const callData = await callRes.json();
+            const event_id = callData.event_id || callData.eventId;
+            if (!event_id) throw new Error('No se recibió event_id del servidor.');
+
+            // 2. Leer SSE como stream
+            const sseRes = await fetch(`${HF_SPACE}/gradio_api/call/run/${event_id}`, {
+                signal: controller.signal
+            });
+            if (!sseRes.ok)
+                throw new Error('Error al conectar con resultado: HTTP ' + sseRes.status);
+
+            const result = await new Promise((resolve, reject) => {
+                const reader  = sseRes.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer    = '';
+                let lastEvent = '';
+                let elapsed   = 0;
+
+                const tick = setInterval(() => {
+                    elapsed += 2;
+                    showUpscaleStatus(true, 'Procesando en servidor… ' + elapsed + 's');
+                }, 2000);
+
+                function processChunk() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            clearInterval(tick);
+                            reject(new Error('Stream cerrado sin resultado.'));
+                            return;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (trimmed.startsWith('event:')) {
+                                lastEvent = trimmed.replace('event:', '').trim();
+                            } else if (trimmed.startsWith('data:')) {
+                                const raw = trimmed.replace('data:', '').trim();
+                                if (lastEvent === 'error') {
+                                    clearInterval(tick);
+                                    try {
+                                        const e = JSON.parse(raw);
+                                        reject(new Error('Error del modelo: ' + (e.message || raw)));
+                                    } catch (_) {
+                                        reject(new Error('Error del modelo: ' + raw));
+                                    }
+                                    return;
+                                }
+                                if (lastEvent === 'complete') {
+                                    try {
+                                        const parsed = JSON.parse(raw);
+                                        if (Array.isArray(parsed) && parsed.length > 0) {
+                                            clearInterval(tick);
+                                            resolve(parsed[0]);
+                                            return;
+                                        }
+                                    } catch (_) {}
+                                }
+                            }
+                        }
+
+                        processChunk();
+                    }).catch((err) => {
+                        clearInterval(tick);
+                        reject(err);
+                    });
+                }
+
+                processChunk();
+            });
+
             clearTimeout(timer);
 
-            if (!predictRes.ok) {
-                const errText = await predictRes.text().catch(() => '');
-                if (predictRes.status === 503)
-                    throw new Error('Servidor ocupado. Intenta de nuevo en unos segundos.');
-                if (predictRes.status === 413)
-                    throw new Error('Imagen demasiado grande para el servidor (413). Reduce el tamaño del canvas e intenta de nuevo.');
-                throw new Error('Error del servidor: ' + predictRes.status + ' ' + errText);
-            }
+            if (!result) throw new Error('El servidor no devolvió imagen.');
 
-            const predictData = await predictRes.json();
-            const resultItem  = predictData.data && predictData.data[0];
-            if (!resultItem) throw new Error('El servidor no devolvió resultado.');
+            const imageUrl = typeof result === 'object'
+                ? (result.url || result.path)
+                : String(result);
 
-            // Data URL directa
-            if (typeof resultItem === 'string' && resultItem.startsWith('data:'))
-                return resultItem;
+            if (!imageUrl) throw new Error('El servidor devolvió resultado vacío.');
+            if (imageUrl.startsWith('data:')) return imageUrl;
 
-            // Ruta relativa o URL — descargar
-            const resultPath = typeof resultItem === 'object'
-                ? (resultItem.url || resultItem.path)
-                : resultItem;
-            const finalUrl = resultPath.startsWith('http')
-                ? resultPath
-                : `${HF_SPACE}/gradio_api/file=${resultPath}`;
+            const finalUrl = imageUrl.startsWith('http')
+                ? imageUrl
+                : `${HF_SPACE}/gradio_api/file=${imageUrl.replace(/^(file=|\/)+/g, '')}`;
 
             const imgRes = await fetch(finalUrl, { signal: controller.signal });
             if (!imgRes.ok) throw new Error('No se pudo descargar la imagen resultado.');
