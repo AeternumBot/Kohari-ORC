@@ -725,42 +725,85 @@
         const args = ['-i', inNative, '-o', outNative, '-n', '1', '-s', String(WAIFU2X_SCALE), '-m', modelPath];
 
         await new Promise(function(resolve, reject) {
-            if (!window.cep || !window.cep.process || typeof window.cep.process.createProcess !== 'function') {
-                reject(new Error('cep.process no disponible. Requiere Photoshop CEP 9+.'));
-                return;
-            }
-
-            var proc = window.cep.process.createProcess(binaryPath, args);
-
-            if (!proc || typeof proc.pid === 'undefined' || proc.pid === -1) {
-                reject(new Error(
-                    'No se pudo iniciar waifu2x-caffe.\n' +
-                    'Verificado en: ' + binaryPath
-                ));
-                return;
-            }
-
-            var stderrLog = '';
-
-            proc.onStdout = function(data) {
-                console.log('[waifu2x-caffe stdout]', data);
-            };
-
-            proc.onStderr = function(data) {
-                stderrLog += data;
-                console.log('[waifu2x-caffe]', data);
-            };
-
-            proc.onComplete = function(exitCode) {
-                if (exitCode === 0) {
-                    resolve();
-                } else {
-                    reject(new Error(
-                        'waifu2x-caffe termino con codigo ' + exitCode + '.\n' +
-                        'Log: ' + stderrLog.slice(-300)
-                    ));
+            var useChildProcess = false;
+            try {
+                if (typeof require !== 'undefined') {
+                    var childProcess = require('child_process');
+                    useChildProcess = true;
                 }
-            };
+            } catch (e) {
+                console.log('[Kohari] child_process no disponible, usando cep.process');
+            }
+
+            if (useChildProcess) {
+                try {
+                    var childProc = childProcess.spawn(binaryPath, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+                    var stderrLog = '';
+
+                    childProc.stdout.on('data', function(data) {
+                        console.log('[waifu2x-caffe stdout]', data.toString());
+                    });
+
+                    childProc.stderr.on('data', function(data) {
+                        stderrLog += data.toString();
+                        console.log('[waifu2x-caffe stderr]', data.toString());
+                    });
+
+                    childProc.on('error', function(err) {
+                        reject(new Error('Error spawning waifu2x-caffe: ' + err.message));
+                    });
+
+                    childProc.on('exit', function(code) {
+                        if (code === 0 || code === null) {
+                            resolve();
+                        } else {
+                            reject(new Error(
+                                'waifu2x-caffe termino con codigo ' + code + '.\n' +
+                                'Log: ' + stderrLog.slice(-500)
+                            ));
+                        }
+                    });
+                } catch (err) {
+                    reject(new Error('Error ejecutando child_process: ' + err.message));
+                }
+            } else {
+                if (!window.cep || !window.cep.process || typeof window.cep.process.createProcess !== 'function') {
+                    reject(new Error('cep.process no disponible. Requiere Photoshop CEP 9+.'));
+                    return;
+                }
+
+                var proc = window.cep.process.createProcess(binaryPath, args);
+
+                if (!proc || typeof proc.pid === 'undefined' || proc.pid === -1) {
+                    reject(new Error(
+                        'No se pudo iniciar waifu2x-caffe con cep.process.\n' +
+                        'Verificado en: ' + binaryPath
+                    ));
+                    return;
+                }
+
+                var stderrLog = '';
+
+                proc.onStdout = function(data) {
+                    console.log('[waifu2x-caffe stdout]', data);
+                };
+
+                proc.onStderr = function(data) {
+                    stderrLog += data;
+                    console.log('[waifu2x-caffe]', data);
+                };
+
+                proc.onComplete = function(exitCode) {
+                    if (exitCode === 0) {
+                        resolve();
+                    } else {
+                        reject(new Error(
+                            'waifu2x-caffe termino con codigo ' + exitCode + '.\n' +
+                            'Log: ' + stderrLog.slice(-300)
+                        ));
+                    }
+                };
+            }
         });
 
         // Paso 4: Leer PNG resultado
