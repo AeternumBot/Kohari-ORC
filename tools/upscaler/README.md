@@ -1,8 +1,11 @@
-# Waifu2x-Caffe — Upscale local CPU (sin Vulkan)
+# Waifu2x-Caffe — Denoise (limpieza de ruido) local CPU
 
 Este directorio debe contener el binario de **waifu2x-caffe** para que
-el upscale funcione sin conexión a internet. **Utiliza CPU puro (Caffe framework)**,
+la limpieza de ruido funcione sin conexión a internet. **Utiliza CPU puro (Caffe framework)**,
 sin dependencias de GPU/Vulkan — compatible con cualquier hardware.
+
+El sistema limpia ruido de escaneos (denoise nivel 3) manteniendo el tamaño original.
+Perfecto para manga/manhwa: mejora la calidad sin afectar resolución.
 
 ## Archivos requeridos
 
@@ -63,15 +66,18 @@ Si retorna exit code 0 y genera PNG, está listo.
 |------|-------|-------|
 | -i   | input.jpg | Archivo entrada (JPEG) |
 | -o   | output.png | Archivo salida (PNG sin pérdidas) |
-| -n   | 1 | Denoise nivel 1 (limpia sin sobre-procesar) |
-| -s   | 2 | Factor x2 (upscale estándar waifu2x) |
-| -m   | anime_style_art_rgb | Modelo ligero RGB, perfecto para manga |
+| -n   | 3 | Denoise nivel 3 (máximo, limpia bien ruido de escaneos) |
+| -m   | noise | Modo denoise-only (sin upscale, mantiene tamaño original) |
+| -l   | anime_style_art_rgb | Modelo anime optimizado para manga |
+| --model_dir | ./models | Directorio raíz de modelos |
+| -p   | cpu | Procesador: CPU mode (sin GPU) |
 
 ## Performance esperado
 
-- **Chunk 512px**: ~2-3 segundos (CPU moderno)
+- **Chunk 512px**: ~1-2 segundos denoise (CPU moderno, muy rápido)
 - **Procesamiento paralelo**: `Promise.all()` con chunks simultáneos
 - **ETA dinámico**: Mostrado en barra de progreso con countdown
+- **Ventaja denoise**: Sin upscale = mucho más rápido, menos carga CPU
 
 ## Diferencias con NCNN versión
 
@@ -88,8 +94,11 @@ Si retorna exit code 0 y genera PNG, está listo.
 **"No se pudo localizar waifu2x-caffe"**
 → Verifica que `waifu2x-caffe/` existe en `tools/upscaler/`
 
-**"Error codigo 2 (modelo no encontrado)"**
-→ Verifica ruta: `tools/upscaler/waifu2x-caffe/models/anime_style_art_rgb/`
+**"Error codigo 1 (falla silenciosa)"**
+→ Modelo no encontrado. Verifica: `tools/upscaler/waifu2x-caffe/models/anime_style_art_rgb/`
 
-**"Proceso tarda mucho"**
-→ Normal en CPU. Chunks de 512px + modelo ligero son ya optimizados.
+**"El denoise no limpia lo suficiente"**
+→ Ya está en nivel máximo (-n 3). Para más limpieza, procesar 2 veces o ajustar manualmente en Photoshop.
+
+**"Es muy rápido, ¿funciona?"**
+→ Sí. Denoise es mucho más ligero que upscale. 1-2s por chunk es normal.
