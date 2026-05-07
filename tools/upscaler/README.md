@@ -1,59 +1,95 @@
-# Waifu2x — Binario local de upscale
+# Waifu2x-Caffe — Upscale local CPU (sin Vulkan)
 
-Este directorio debe contener el binario de **waifu2x-ncnn-vulkan** para que
-el upscale funcione sin conexion a internet. Es el unico motor disponible.
+Este directorio debe contener el binario de **waifu2x-caffe** para que
+el upscale funcione sin conexión a internet. **Utiliza CPU puro (Caffe framework)**,
+sin dependencias de GPU/Vulkan — compatible con cualquier hardware.
 
 ## Archivos requeridos
 
 ```
 tools/upscaler/
-  waifu2x-ncnn-vulkan.exe       (ejecutable principal, Vulkan GPU)
-  models-cunet/                  (carpeta de modelo — incluida en el ZIP)
-    ├── noise0_scale2x_model.bin
-    ├── noise0_scale2x_model.param
-    └── ... (resto de archivos del modelo cunet)
+  waifu2x-caffe/
+    waifu2x-caffe_waifu2xEX.exe       (ejecutable principal, CPU puro)
+    models/
+      anime_style_art_rgb/              (modelo ligero: 1.2MB, optimizado para manga)
+        ├── noise0_scale2.0x_model.prototxt
+        ├── noise1_scale2.0x_model.prototxt
+        ├── noise0_scale2.0x_model.prototxt.protobin
+        ├── noise0_scale2.0x_model.json.caffemodel
+        └── ... (resto de archivos del modelo)
 ```
 
-## Descarga
+## Por qué Caffe (no NCNN/Vulkan)
 
-Descarga el release para Windows desde:
-https://github.com/nihui/waifu2x-ncnn-vulkan/releases
+- **waifu2x-ncnn-vulkan**: Requiere Vulkan GPU → falla en AMD Radeon, GPUs viejas
+- **waifu2x-caffe**: CPU puro con Caffe framework → funciona en cualquier PC sin GPU
+- Modelo **anime_style_art_rgb** (1.2MB): Ligero, RGB, optimizado para manga
+- Denoise `n=1`: Balance perfecto entre limpieza y velocidad
 
-Archivo: `waifu2x-ncnn-vulkan-YYYYMMDD-windows.zip`
+## Instalación
 
-Extrae el ZIP y copia en este directorio:
-- `waifu2x-ncnn-vulkan.exe`
-- La carpeta completa `models-cunet/`
+### Opción A: Desde Waifu2x Extension GUI (recomendado)
 
-## Requisitos del sistema
+1. Descarga Waifu2x Extension GUI v3.137+ desde:
+   https://github.com/AaronFeng753/Waifu2x-Extension-GUI/releases
 
-- Windows 10/11 64-bit
-- GPU con soporte Vulkan (NVIDIA, AMD o Intel integrado)
-- Sin CUDA ni drivers especiales, solo Vulkan (incluido en drivers modernos)
-- Si no hay GPU Vulkan disponible, waifu2x cae a procesamiento por CPU automaticamente
+2. Busca la carpeta `waifu2x-caffe/` dentro del ZIP extraído
 
-## Verificacion manual
+3. Copia esta carpeta entera a `tools/upscaler/`:
+   ```
+   tools/upscaler/
+     └── waifu2x-caffe/
+   ```
 
-Prueba el binario desde PowerShell:
+### Opción B: Compilar desde fuente
 
+https://github.com/nagadomi/waifu2x-caffe
+(No recomendado si tienes la GUI disponible)
+
+## Verificación manual
+
+Desde PowerShell:
+
+```powershell
+cd 'tools\upscaler\waifu2x-caffe'
+.\waifu2x-caffe_waifu2xEX.exe -i input.jpg -o output.png -n 1 -s 2 -m .\models\anime_style_art_rgb
 ```
-cd tools\upscaler
-.\waifu2x-ncnn-vulkan.exe -i input.jpg -o output.png -n 0 -s 2 -m models-cunet -f png
-```
 
-Si retorna exit code 0 y genera el PNG, esta listo.
+Si retorna exit code 0 y genera PNG, está listo.
 
-## Parametros que usa Kohari ORC
+## Parámetros que usa Kohari ORC
 
-| Flag | Valor | Razon |
+| Flag | Valor | Razón |
 |------|-------|-------|
-| -n   | 0     | Denoise minimo — preserva texto limpio sin artefactos |
-| -s   | 2     | Factor x2 (soporte nativo de waifu2x, optimo calidad/velocidad) |
-| -m   | models-cunet | Modelo ligero con buena calidad para anime/manga |
-| -f   | png   | Salida sin perdidas |
+| -i   | input.jpg | Archivo entrada (JPEG) |
+| -o   | output.png | Archivo salida (PNG sin pérdidas) |
+| -n   | 1 | Denoise nivel 1 (limpia sin sobre-procesar) |
+| -s   | 2 | Factor x2 (upscale estándar waifu2x) |
+| -m   | anime_style_art_rgb | Modelo ligero RGB, perfecto para manga |
 
-## Tiling
+## Performance esperado
 
-Kohari ORC divide el documento en chunks de 512px (+ 32px overlap) y los
-procesa en paralelo con Promise.all. Chunks mas pequenos = mas paralelizacion
-= procesamiento global mas rapido.
+- **Chunk 512px**: ~2-3 segundos (CPU moderno)
+- **Procesamiento paralelo**: `Promise.all()` con chunks simultáneos
+- **ETA dinámico**: Mostrado en barra de progreso con countdown
+
+## Diferencias con NCNN versión
+
+| Aspecto | waifu2x-caffe | waifu2x-ncnn-vulkan |
+|---------|---------------|--------------------|
+| Backend | Caffe CPU | NCNN + Vulkan GPU |
+| GPU requerida | No | Sí (incompatible AMD) |
+| Velocidad | Moderada (CPU) | Rápida (si GPU funciona) |
+| Compatibilidad | ✅ Universal | ❌ GPUs específicas |
+| Modelo recomendado | anime_style_art_rgb | models-cunet |
+
+## Troubleshooting
+
+**"No se pudo localizar waifu2x-caffe"**
+→ Verifica que `waifu2x-caffe/` existe en `tools/upscaler/`
+
+**"Error codigo 2 (modelo no encontrado)"**
+→ Verifica ruta: `tools/upscaler/waifu2x-caffe/models/anime_style_art_rgb/`
+
+**"Proceso tarda mucho"**
+→ Normal en CPU. Chunks de 512px + modelo ligero son ya optimizados.

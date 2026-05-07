@@ -675,7 +675,7 @@
      * @param {string} extPath     - Path de la extension CEP (para localizar el binario)
      * @returns {Promise<string>}  - Base64 puro de la PNG escalada
      */
-    async function upscaleWithWaifu2x(chunkB64, tempPath, exportIndex, chunkIndex, extPath) {
+    async function upscaleWithWaifu2xCaffe(chunkB64, tempPath, exportIndex, chunkIndex, extPath) {
         const isWin = navigator.appVersion.indexOf('Win') !== -1;
 
         const inFile  = tempPath + '/kohari_w2x_in_'  + exportIndex + '_' + chunkIndex + '.jpg';
@@ -691,12 +691,13 @@
         if (writeResult.err !== window.cep.fs.NO_ERROR)
             throw new Error('Error escribiendo chunk ' + chunkIndex + ': codigo ' + writeResult.err);
 
-        // Paso 2: Localizar binario waifu2x-ncnn-vulkan en tools/upscaler/
-        const binaryName = isWin ? 'waifu2x-ncnn-vulkan.exe' : 'waifu2x-ncnn-vulkan';
+        // Paso 2: Localizar binario waifu2x-caffe en tools/upscaler/waifu2x-caffe/
+        const binaryName = isWin ? 'waifu2x-caffe_waifu2xEX.exe' : 'waifu2x-caffe_waifu2xEX';
+        const caffeDir = isWin ? '\\waifu2x-caffe' : '/waifu2x-caffe';
         const possiblePaths = [
-            isWin ? 'C:\\Users\\levoh\\Desktop\\Kohari ORC\\tools\\upscaler\\' + binaryName : process.env.HOME + '/Desktop/Kohari ORC/tools/upscaler/' + binaryName,
-            isWin ? (extPath + '\\tools\\upscaler\\' + binaryName) : (extPath + '/tools/upscaler/' + binaryName),
-            isWin ? 'C:\\Program Files\\Common Files\\Adobe\\CEP\\extensions\\com.kohari.orc\\tools\\upscaler\\' + binaryName : '/opt/Adobe/CEP/extensions/com.kohari.orc/tools/upscaler/' + binaryName
+            isWin ? 'C:\\Users\\levoh\\Desktop\\Kohari ORC\\tools\\upscaler\\waifu2x-caffe\\' + binaryName : process.env.HOME + '/Desktop/Kohari ORC/tools/upscaler/waifu2x-caffe/' + binaryName,
+            isWin ? (extPath + '\\tools\\upscaler\\waifu2x-caffe\\' + binaryName) : (extPath + '/tools/upscaler/waifu2x-caffe/' + binaryName),
+            isWin ? 'C:\\Program Files\\Common Files\\Adobe\\CEP\\extensions\\com.kohari.orc\\tools\\upscaler\\waifu2x-caffe\\' + binaryName : '/opt/Adobe/CEP/extensions/com.kohari.orc/tools/upscaler/waifu2x-caffe/' + binaryName
         ];
 
         let binaryPath = null;
@@ -705,108 +706,62 @@
                 const stat = window.cep.fs.stat(p);
                 if (stat && stat.data) {
                     binaryPath = p;
-                    console.log('[Kohari] Binario waifu2x encontrado en:', p);
+                    console.log('[Kohari] Binario waifu2x-caffe encontrado en:', p);
                     break;
                 }
             } catch (_) {}
         }
 
         if (!binaryPath) {
-            throw new Error('No se pudo localizar waifu2x-ncnn-vulkan en:\n' + possiblePaths.join('\n'));
+            throw new Error('No se pudo localizar waifu2x-caffe en:\n' + possiblePaths.join('\n'));
         }
 
         // Obtener directorio del binario para construir ruta del modelo
         let binaryDir = binaryPath.substring(0, binaryPath.lastIndexOf(isWin ? '\\' : '/'));
-        let modelPath = binaryDir + (isWin ? '\\' : '/') + 'models-cunet';
+        let modelPath = binaryDir + (isWin ? '\\' : '/') + 'models' + (isWin ? '\\' : '/') + 'anime_style_art_rgb';
 
-        // Paso 3: Invocar waifu2x-ncnn-vulkan
-        // Flags:
-        //   -i  archivo entrada
-        //   -o  archivo salida PNG
-        //   -n 0  denoise minimo (texto limpio, sin artefactos)
-        //   -s 2  factor escala (unico soporte base de waifu2x)
-        //   -m models-cunet  modelo (ruta absoluta para evitar problemas con working directory)
-        //   -g -1  fuerza CPU (evita problemas de Vulkan/GPU)
-        //   -f png  formato salida explicito
-        const args = ['-i', inNative, '-o', outNative, '-n', '0', '-s', String(WAIFU2X_SCALE), '-m', modelPath, '-g', '-1', '-f', 'png'];
+        // Paso 3: Invocar waifu2x-caffe (CPU puro, sin Vulkan)
+        // waifu2x-caffe usa modelo lightweight anime_style_art_rgb (1.2MB, RGB, optimizado para manga)
+        const args = ['-i', inNative, '-o', outNative, '-n', '1', '-s', String(WAIFU2X_SCALE), '-m', modelPath];
 
-        // Intentar con child_process (Node.js) primero, fallback a cep.process
-        let useChildProcess = false;
-        try {
-            if (typeof require !== 'undefined' && typeof require('child_process') !== 'undefined') {
-                useChildProcess = true;
+        await new Promise(function(resolve, reject) {
+            if (!window.cep || !window.cep.process || typeof window.cep.process.createProcess !== 'function') {
+                reject(new Error('cep.process no disponible. Requiere Photoshop CEP 9+.'));
+                return;
             }
-        } catch (e) {
-            useChildProcess = false;
-        }
 
-        if (useChildProcess) {
-            // Usar Node.js child_process (más confiable)
-            const { spawn } = require('child_process');
-            await new Promise(function(resolve, reject) {
-                try {
-                    const proc = spawn(binaryPath, args, { stdio: 'pipe', detached: false });
-                    let stderrLog = '';
+            var proc = window.cep.process.createProcess(binaryPath, args);
 
-                    proc.stdout.on('data', (data) => {
-                        console.log('[waifu2x]', data.toString());
-                    });
+            if (!proc || typeof proc.pid === 'undefined' || proc.pid === -1) {
+                reject(new Error(
+                    'No se pudo iniciar waifu2x-caffe.\n' +
+                    'Verificado en: ' + binaryPath
+                ));
+                return;
+            }
 
-                    proc.stderr.on('data', (data) => {
-                        stderrLog += data.toString();
-                        console.log('[waifu2x err]', data.toString());
-                    });
+            var stderrLog = '';
 
-                    proc.on('close', (code) => {
-                        if (code === 0) {
-                            resolve();
-                        } else {
-                            reject(new Error('waifu2x código ' + code + ': ' + stderrLog.slice(-200)));
-                        }
-                    });
+            proc.onStdout = function(data) {
+                console.log('[waifu2x-caffe stdout]', data);
+            };
 
-                    proc.on('error', (err) => {
-                        reject(new Error('Error spawn: ' + err.message));
-                    });
-                } catch (err) {
-                    reject(err);
+            proc.onStderr = function(data) {
+                stderrLog += data;
+                console.log('[waifu2x-caffe]', data);
+            };
+
+            proc.onComplete = function(exitCode) {
+                if (exitCode === 0) {
+                    resolve();
+                } else {
+                    reject(new Error(
+                        'waifu2x-caffe termino con codigo ' + exitCode + '.\n' +
+                        'Log: ' + stderrLog.slice(-300)
+                    ));
                 }
-            });
-        } else {
-            // Fallback a cep.process
-            await new Promise(function(resolve, reject) {
-                if (!window.cep || !window.cep.process || typeof window.cep.process.createProcess !== 'function') {
-                    reject(new Error('cep.process y child_process no disponibles.'));
-                    return;
-                }
-
-                var proc = window.cep.process.createProcess(binaryPath, args);
-
-                if (!proc || typeof proc.pid === 'undefined' || proc.pid === -1) {
-                    reject(new Error('No se pudo iniciar: ' + binaryPath));
-                    return;
-                }
-
-                var stderrLog = '';
-
-                proc.onStdout = function(data) {
-                    console.log('[waifu2x]', data);
-                };
-
-                proc.onStderr = function(data) {
-                    stderrLog += data;
-                    console.log('[waifu2x err]', data);
-                };
-
-                proc.onComplete = function(exitCode) {
-                    if (exitCode === 0) {
-                        resolve();
-                    } else {
-                        reject(new Error('waifu2x código ' + exitCode + ': ' + stderrLog.slice(-200)));
-                    }
-                };
-            });
-        }
+            };
+        });
 
         // Paso 4: Leer PNG resultado
         var readResult = window.cep.fs.readFile(outNative, window.cep.encoding.Base64);
@@ -911,16 +866,36 @@
                 return canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
             });
 
-            // 6. Procesar todos los chunks en PARALELO con waifu2x local
-            showUpscaleStatus(true, `Enviando ${chunks.length} seccion(es) a waifu2x...`);
+            // 6. Procesar todos los chunks en PARALELO con waifu2x-caffe (CPU puro, sin Vulkan)
+            const totalChunks = chunks.length;
             let completedCount = 0;
+            const startTime = Date.now();
+
+            const updateProgressBar = () => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const avgTimePerChunk = completedCount > 0 ? elapsed / completedCount : 0;
+                const remainingChunks = totalChunks - completedCount;
+                const estimatedRemaining = avgTimePerChunk * remainingChunks;
+                const percentage = Math.round((completedCount / totalChunks) * 100);
+
+                const mins = Math.floor(estimatedRemaining / 60);
+                const secs = Math.floor(estimatedRemaining % 60);
+                const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+                const barLength = 20;
+                const filledBars = Math.round((barLength * completedCount) / totalChunks);
+                const emptyBars = barLength - filledBars;
+                const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+
+                showUpscaleStatus(true, `${progressBar} ${percentage}% — ETA: ${timeStr}`);
+            };
 
             const upscaledB64Array = await Promise.all(
                 chunkDataArray.map(async (chunkB64, i) => {
-                    const raw = await upscaleWithWaifu2x(chunkB64, safePath, exportIndex, i, extPath);
+                    const raw = await upscaleWithWaifu2xCaffe(chunkB64, safePath, exportIndex, i, extPath);
                     if (!raw) throw new Error(`Seccion ${i + 1} no devolvio imagen.`);
                     completedCount++;
-                    showUpscaleStatus(true, `Completadas ${completedCount}/${chunks.length} secciones...`);
+                    updateProgressBar();
                     return raw.includes(',') ? raw.split(',')[1] : raw;
                 })
             );
