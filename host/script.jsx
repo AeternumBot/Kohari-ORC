@@ -38,6 +38,42 @@ function getSelections() {
     }
 }
 
+function exportSelection(tempPath, index) {
+    var prevDialogs = app.displayDialogs;
+    app.displayDialogs = DialogModes.NO;
+    try {
+        if (app.documents.length === 0)
+            return '{"success": false, "error": "No hay documento abierto"}';
+
+        var doc = app.activeDocument;
+        var bounds = doc.selection.bounds;
+        var left = parseFloat(bounds[0]);
+        var top = parseFloat(bounds[1]);
+        var right = parseFloat(bounds[2]);
+        var bottom = parseFloat(bounds[3]);
+
+        if (right - left <= 0 || bottom - top <= 0)
+            return '{"success": false, "error": "Selección vacía"}';
+
+        var filePath = tempPath + '/kohari_selection_' + index + '.png';
+
+        var selDoc = doc.duplicate();
+        selDoc.crop([left, top, right, bottom]);
+        selDoc.flatten();
+        if (selDoc.mode !== DocumentMode.RGB) selDoc.changeMode(ChangeMode.RGB);
+
+        var pngOpts = new PNGSaveOptions();
+        selDoc.saveAs(new File(filePath), pngOpts, true, Extension.LOWERCASE);
+        selDoc.close(SaveOptions.DONOTSAVECHANGES);
+
+        app.displayDialogs = prevDialogs;
+        return '{"success": true, "filePath": "' + filePath + '", "bounds": {"left": ' + left + ', "top": ' + top + ', "right": ' + right + ', "bottom": ' + bottom + '}}';
+    } catch (e) {
+        app.displayDialogs = prevDialogs;
+        return '{"success": false, "error": "exportSelection: ' + escapeJSON(e) + '"}';
+    }
+}
+
 // --- FUNCIONES DE LIMPIEZA IA ---
 
 function exportSelectionWithMask(tempPath, index) {

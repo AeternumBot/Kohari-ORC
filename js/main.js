@@ -1259,11 +1259,30 @@
             if (state.options.singleLine) {
                 text = text.replace(/\n+/g, ' ').trim();
             }
-            // Limpieza de artefactos en coreano:
-            // Solo reemplazamos patrones imposibles en texto real
-            // (7 seguido de / o | NUNCA ocurre en coreano o en números)
+
+            // Rango Unicode de Hangul: AC00-D7A3
+            // Limpieza agresiva de artefactos OCR en coreano
+
+            // 1. Eliminar símbolos raros que NUNCA aparecen en texto coreano
+            text = text.replace(/[&^~`¬§¶†‡<>*]/g, '');
+
+            // 2. Números pegados a caracteres coreanos (ej: "쇼86" → "쇼")
+            // Patrón: carácter coreano seguido de 1-3 dígitos
+            text = text.replace(/([가-힣])\d{1,3}/g, '$1');
+
+            // 3. Dígitos antes de caracteres coreanos (ej: "86쇼" → "쇼")
+            // Patrón: 1-3 dígitos seguidos de carácter coreano
+            text = text.replace(/\d{1,3}([가-힣])/g, '$1');
+
+            // 4. Limpiar números sueltos (no dentro de palabras coreanas)
+            text = text.replace(/\s\d+\s/g, ' ');  // números entre espacios
+            text = text.replace(/^\d+\s/g, '');     // números al inicio
+            text = text.replace(/\s\d+$/g, '');     // números al final
+
+            // 5. Artefactos específicos comunes
             text = text.replace(/7[|\/]/g, '기');
             text = text.replace(/\|/g, 'I');
+
             text = text.trim();
         } else {
             text = text.replace(/\n{3,}/g, '\n\n');
