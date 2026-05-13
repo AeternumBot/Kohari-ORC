@@ -1,0 +1,22 @@
+{
+  "version": "cleaner-only",
+  "description": "Kohari TOOLS - Cleaner Only (Solo limpieza con IA)",
+  "modules": {
+    "ocr": {
+      "enabled": false,
+      "licensed": false,
+      "name": "OCR - Extracción de Texto"
+    },
+    "cleaner": {
+      "enabled": true,
+      "licensed": true,
+      "name": "Limpiador - Limpieza con IA",
+      "description": "Limpia texto y SFX de imágenes usando inpainting con IA, o rellena globos de blanco"
+    },
+    "extras": {
+      "enabled": false,
+      "licensed": false,
+      "name": "Herramientas Extras"
+    }
+  }
+}

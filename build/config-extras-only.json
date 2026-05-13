@@ -1,0 +1,22 @@
+{
+  "version": "extras-only",
+  "description": "Kohari TOOLS - Extras Only (Solo herramientas extras)",
+  "modules": {
+    "ocr": {
+      "enabled": false,
+      "licensed": false,
+      "name": "OCR - Extracción de Texto"
+    },
+    "cleaner": {
+      "enabled": false,
+      "licensed": false,
+      "name": "Limpiador - Limpieza con IA"
+    },
+    "extras": {
+      "enabled": true,
+      "licensed": true,
+      "name": "Herramientas Extras",
+      "description": "Herramientas adicionales: conversor TPL a JSON para TypeR"
+    }
+  }
+}

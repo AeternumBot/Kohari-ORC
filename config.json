@@ -1,0 +1,24 @@
+{
+  "version": "complete",
+  "description": "Kohari TOOLS - Versión Completa (Todos los módulos habilitados)",
+  "modules": {
+    "ocr": {
+      "enabled": true,
+      "licensed": true,
+      "name": "OCR - Extracción de Texto",
+      "description": "Extrae texto de imágenes usando OCR local (Tesseract) o IA en la nube (Gemini)"
+    },
+    "cleaner": {
+      "enabled": true,
+      "licensed": true,
+      "name": "Limpiador - Limpieza con IA",
+      "description": "Limpia texto y SFX de imágenes usando inpainting con IA, o rellena globos de blanco"
+    },
+    "extras": {
+      "enabled": true,
+      "licensed": true,
+      "name": "Herramientas Extras",
+      "description": "Herramientas adicionales: conversor TPL a JSON para TypeR"
+    }
+  }
+}
