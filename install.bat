@@ -106,6 +106,7 @@ xcopy /e /i /q /y "tessdata" "%DEST_DIR%\tessdata"
 
 :: Copiar archivos principales
 copy /y "index.html" "%DEST_DIR%\"
+copy /y "config.json" "%DEST_DIR%\" 2> nul
 copy /y "CSXS\manifest.xml" "%DEST_DIR%\CSXS\"
 copy /y "host\script.jsx" "%DEST_DIR%\host\"
 
